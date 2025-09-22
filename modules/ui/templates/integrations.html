@@ -1,0 +1,17 @@
+﻿<!doctype html><html><head><meta charset="utf-8"><title>Integrations</title>
+<style>body{font-family:system-ui,Arial;margin:24px} table{border-collapse:collapse} td,th{border:1px solid #ddd;padding:6px}</style></head>
+<body>
+<h2>Integrations</h2>
+<table><tr><th>Name</th><th>Path</th><th>Module</th><th>Callable</th><th>Signature</th></tr>
+{% for i in lst.integrations %}<tr><td>{{i.name}}</td><td>{{i.path}}</td><td>{{i.module}}</td><td>{{i.callable}}</td><td>{{i.sig}}</td></tr>{% endfor %}
+</table>
+<h3>Register</h3>
+<form method="post" action="/ui/integrations/register">
+<input name="name" placeholder="ext_tools" required>
+<input name="path" placeholder="C:\path\to\ext" required>
+<input name="module" placeholder="extpkg.tools" required>
+<input name="callable" placeholder="hello" required>
+<button type="submit">Register</button>
+</form>
+<p><a href="/ui">в†ђ back</a></p>
+</body></html>

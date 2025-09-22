@@ -1,0 +1,7 @@
+{
+  "tools": [
+    {"name":"text.uppercase","method":"GET","path":"/text/uppercase","params":["s"],"desc":"Uppercase string"},
+    {"name":"webscraper.title","method":"GET","path":"/webscraper/title","params":["url"],"desc":"Fetch <title>"},
+    {"name":"resources.snapshot","method":"GET","path":"/resources/snapshot","params":[],"desc":"CPU/RAM snapshot"}
+  ]
+}

@@ -1,0 +1,1 @@
+﻿{"packages":{"openssl":{"min_safe_version":"1.1.1"},"bash":{"min_safe_version":"5.0"}},"cves":[{"id":"CVE-2024-0001","severity":"high","desc":"Dummy"}]}

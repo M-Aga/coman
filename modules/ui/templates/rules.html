@@ -1,0 +1,19 @@
+﻿<!doctype html><html><head><meta charset="utf-8"><title>Rules</title>
+<style>body{font-family:system-ui,Arial;margin:24px} table{border-collapse:collapse} td,th{border:1px solid #ddd;padding:6px} textarea{width:100%;height:120px}</style></head>
+<body>
+<h2>Extended Rules (JSON DSL)</h2>
+<table><tr><th>ID</th><th>Name</th><th>Priority</th><th>Expr</th><th>Action</th><th>Enabled</th></tr>
+{% for r in rules %}<tr><td>{{r.id}}</td><td>{{r.name}}</td><td>{{r.priority}}</td><td><pre>{{r.expr_json}}</pre></td><td><pre>{{r.action_json}}</pre></td><td>{{r.enabled}}</td></tr>{% endfor %}
+</table>
+<h3>Add rule</h3>
+<form method="post" action="/ui/rules/add">
+<input name="name" placeholder="route:hello" required>
+<input name="priority" type="number" value="10">
+<p>Expr JSON (e.g. {"eq":["task","hello"]})</p>
+<textarea name="expr_json" required></textarea>
+<p>Action JSON (e.g. {"set":{"use_integration":"ext_tools","use_callable":"extpkg.tools.hello"}})</p>
+<textarea name="action_json" required></textarea>
+<button type="submit">Add</button>
+</form>
+<p><a href="/ui">в†ђ back</a></p>
+</body></html>
