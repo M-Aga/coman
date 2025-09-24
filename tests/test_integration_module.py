@@ -2,13 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-fastapi = pytest.importorskip("fastapi")
-testclient = pytest.importorskip("fastapi.testclient")
-
-FastAPI = fastapi.FastAPI
-TestClient = testclient.TestClient
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 from coman.core.registry import Core
 from coman.modules.integration import module as integration_module
