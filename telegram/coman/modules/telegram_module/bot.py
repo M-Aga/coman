@@ -6,13 +6,13 @@ from telegram.ext import (
 from .config import load_config
 from .db import DB
 from .api import ComanAPI
-from .handlers import cmd_start, cb_menu, cb_settings, on_text
+from .handlers import cmd_start, cmd_status, cb_menu, cb_settings, on_text
 
 log = logging.getLogger("coman.telegram")
 
 def build_application():
     cfg = load_config()
-    db = DB(cfg.db_path)
+    db = DB(cfg.db_path, cfg.default_lang)
     api = ComanAPI(cfg.api_base_url, cfg.api_token, cfg.request_timeout_s)
 
     application = ApplicationBuilder().token(cfg.telegram_token).build()
@@ -20,6 +20,12 @@ def build_application():
     # Wrap handlers to inject dependencies without global state
     async def start(update, context):
         return await cmd_start(update, context, db=db, admins=cfg.admin_ids)
+
+    async def help_cmd(update, context):
+        return await cmd_start(update, context, db=db, admins=cfg.admin_ids, help_only=True)
+
+    async def status(update, context):
+        return await cmd_status(update, context, db=db, api=api)
 
     async def menu(update, context):
         return await cb_menu(update, context, db=db, api=api, admins=cfg.admin_ids)
@@ -33,7 +39,8 @@ def build_application():
     # Register
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("menu", start))
-    application.add_handler(CommandHandler("help", start))
+    application.add_handler(CommandHandler("help", help_cmd))
+    application.add_handler(CommandHandler("status", status))
     application.add_handler(CallbackQueryHandler(menu, pattern=r"^menu:"))
     application.add_handler(CallbackQueryHandler(settings, pattern=r"^settings:"))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text))
