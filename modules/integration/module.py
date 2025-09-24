@@ -47,7 +47,7 @@ class Module(BaseModule):
         @self.router.get("/list")
         def listing(): return load_reg()
         @self.router.post("/call")
-        def call(name: str, callable: str, kwargs: dict = {}, mode: str = "inproc", verify_sig: int = 1):
+        def call(name: str, callable: str | None = None, kwargs: dict | None = None, mode: str = "inproc", verify_sig: int = 1):
             data = load_reg(); it = next((x for x in data["integrations"] if x["name"] == name), None)
             if not it: raise HTTPException(404, "integration not found")
             if not _is_allowed(it["path"]): raise HTTPException(400, f"path '{it['path']}' is not allowed anymore")
@@ -55,13 +55,28 @@ class Module(BaseModule):
             if verify_sig:
                 cur = _sha256(_module_file(it["module"]))
                 if cur and cur != it.get("sig",""): raise HTTPException(400, "signature mismatch")
+            if kwargs is None: kwargs = {}
+            if not isinstance(kwargs, dict):
+                raise HTTPException(400, "kwargs must be a JSON object")
+            if "kwargs" in kwargs and len(kwargs) == 1 and isinstance(kwargs["kwargs"], dict):
+                kwargs = kwargs["kwargs"]
+            target_callable = callable or it.get("callable")
+            if not target_callable:
+                raise HTTPException(400, "callable not specified")
+            module_name = it["module"]
+            func_name = target_callable
+            if "." in target_callable:
+                mod_part, func_part = target_callable.rsplit(".", 1)
+                if mod_part != module_name:
+                    raise HTTPException(400, "callable must belong to the registered module")
+                module_name, func_name = mod_part, func_part
             if mode == "inproc":
-                mod = importlib.import_module(callable.rsplit(".",1)[0])
-                fn = getattr(mod, callable.rsplit(".",1)[1])
+                mod = importlib.import_module(module_name)
+                fn = getattr(mod, func_name)
                 return {"result": fn(**kwargs)}
             else:
                 runner = os.path.join(os.path.dirname(__file__), "runner.py")
-                payload = json.dumps({"module": callable.rsplit(".",1)[0], "callable": callable.rsplit(".",1)[1], "kwargs": kwargs})
+                payload = json.dumps({"module": module_name, "callable": func_name, "kwargs": kwargs})
                 proc = subprocess.run([sys.executable, runner], input=payload, text=True, capture_output=True, timeout=30)
                 import json as _json
                 try: resp = _json.loads(proc.stdout)
