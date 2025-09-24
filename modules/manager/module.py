@@ -1,21 +1,31 @@
 ﻿from __future__ import annotations
 from coman.core.base_module import BaseModule
 from coman.core.config import settings
-from fastapi import Body, Query
+from coman.core.messages import (
+    ManagerRunRequest,
+    ManagerRunResult,
+    ToolDefinition,
+    ToolRegistry,
+)
+from fastapi import Body, HTTPException, Query
 import os, json, httpx, re
 
 TOOLS_PATH = os.path.join("coman","data","tools.json")
 
-def load_tools():
-    if not os.path.exists(TOOLS_PATH): return {"tools":[]}
-    # utf-8-sig — на случай BOM в tools.json
-    with open(TOOLS_PATH,"r",encoding="utf-8-sig") as f:
-        return json.load(f)
 
-def save_tools(d):
+def load_tools() -> ToolRegistry:
+    if not os.path.exists(TOOLS_PATH):
+        return ToolRegistry()
+    # utf-8-sig — на случай BOM в tools.json
+    with open(TOOLS_PATH, "r", encoding="utf-8-sig") as f:
+        data = json.load(f)
+    return ToolRegistry.from_payload(data)
+
+
+def save_tools(registry: ToolRegistry) -> None:
     os.makedirs(os.path.dirname(TOOLS_PATH), exist_ok=True)
-    with open(TOOLS_PATH,"w",encoding="utf-8") as f:
-        json.dump(d,f,ensure_ascii=False,indent=2)
+    with open(TOOLS_PATH, "w", encoding="utf-8") as f:
+        json.dump(registry.to_payload(), f, ensure_ascii=False, indent=2)
 
 URL_RX = re.compile(r'(https?://[^\s\]\)\}\,;"]+)', re.I)
 
@@ -34,21 +44,42 @@ class Module(BaseModule):
 
         @self.router.get("/tools")
         def tools():
-            return load_tools()
+            return load_tools().to_payload()
 
         @self.router.post("/tools/register")
-        def register_tool(name: str, method: str, path: str, params: str = "", desc: str = ""):
-            d = load_tools()
-            t = [x for x in d.get("tools", []) if x["name"] != name]
-            t.append({"name":name,"method":method.upper(),"path":path,"params":[p for p in params.split(",") if p],"desc":desc})
-            d["tools"] = t; save_tools(d)
-            return {"ok": True}
+        def register_tool(
+            payload: ToolDefinition | None = Body(default=None),
+            name: str | None = Query(default=None),
+            method: str | None = Query(default=None),
+            path: str | None = Query(default=None),
+            params: str = Query(default=""),
+            desc: str = Query(default=""),
+        ):
+            if payload is not None:
+                tool = ToolDefinition.from_payload(payload)
+            else:
+                if not name or not path:
+                    raise HTTPException(400, "name and path are required")
+                tool = ToolDefinition(
+                    name=name,
+                    method=(method or "GET"),
+                    path=path,
+                    params=params,
+                    desc=desc,
+                )
+            registry = load_tools()
+            registry.upsert(tool)
+            save_tools(registry)
+            resp = {"ok": True, "tool": tool.to_payload()}
+            return resp
 
         @self.router.post("/run")
-        def run(payload: dict | None = Body(default=None), goal_q: str | None = Query(default=None)):
-            goal = (payload or {}).get("goal") if isinstance(payload, dict) else None
-            inputs = (payload or {}).get("inputs") if isinstance(payload, dict) else {}
-            if not goal: goal = goal_q or ""
+        def run(payload: ManagerRunRequest | dict | None = Body(default=None), goal_q: str | None = Query(default=None)):
+            req = ManagerRunRequest.from_payload(payload)
+            if goal_q and not req.goal:
+                req = req.clone(goal=goal_q)
+            goal = req.goal
+            inputs = req.inputs
 
             # 1) если есть URL — принудительно webscraper.title
             url_in_text = None
@@ -63,14 +94,20 @@ class Module(BaseModule):
                         tool_name = name
                         break
 
+            registry = load_tools()
             if not tool_name:
-                return {"goal": goal, "error":"no_tool","message":"No matching tool found", "known_tools": load_tools()}
+                result = ManagerRunResult(goal=goal, error="no_tool", message="No matching tool found")
+                result.set_known_tools(registry)
+                return result.to_payload()
 
-            d = load_tools(); tools = {t["name"]: t for t in d.get("tools", [])}
-            tool = tools.get(tool_name)
-            if not tool: return {"error":"unknown_tool","name":tool_name}
+            tool = registry.find(tool_name)
+            if not tool:
+                result = ManagerRunResult(goal=goal, tool=tool_name, error="unknown_tool", message="Tool is not registered")
+                payload = result.to_payload()
+                payload.setdefault("name", tool_name)
+                return payload
 
-            method, path, params = tool["method"], tool["path"], tool.get("params", [])
+            method, path, params = tool.method, tool.path, tool.params
             query = {}
             for p in params:
                 if p in (inputs or {}):
@@ -101,4 +138,5 @@ class Module(BaseModule):
             if isinstance(res_body, str):
                 res_body = {"text": res_body}
 
-            return {"goal": goal, "tool": tool_name, "query": query, "result": res_body}
+            result = ManagerRunResult(goal=goal, tool=tool_name, query=query, result=res_body)
+            return result.to_payload()

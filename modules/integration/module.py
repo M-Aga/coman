@@ -1,15 +1,29 @@
 ﻿from __future__ import annotations
 from coman.core.base_module import BaseModule
 from coman.core.config import settings
-from fastapi import HTTPException
+from coman.core.messages import (
+    IntegrationCallRequest,
+    IntegrationCallResult,
+    IntegrationDefinition,
+    IntegrationRegistry,
+)
+from fastapi import Body, HTTPException
 import sys, os, json, importlib, subprocess
 REG_PATH = os.path.join("coman","data","integrations.json")
-def load_reg():
-    if not os.path.exists(REG_PATH): return {"integrations":[]}
-    with open(REG_PATH,"r",encoding="utf-8") as f: return json.load(f)
-def save_reg(data):
+
+
+def load_reg() -> IntegrationRegistry:
+    if not os.path.exists(REG_PATH):
+        return IntegrationRegistry()
+    with open(REG_PATH, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return IntegrationRegistry.from_payload(data)
+
+
+def save_reg(registry: IntegrationRegistry) -> None:
     os.makedirs(os.path.dirname(REG_PATH), exist_ok=True)
-    with open(REG_PATH,"w",encoding="utf-8") as f: json.dump(data,f,ensure_ascii=False,indent=2)
+    with open(REG_PATH, "w", encoding="utf-8") as f:
+        json.dump(registry.to_payload(), f, ensure_ascii=False, indent=2)
 def _is_allowed(path: str) -> bool:
     rp = os.path.realpath(path)
     for base in settings.allowed_integration_paths:
@@ -34,54 +48,92 @@ class Module(BaseModule):
     def __init__(self, core):
         super().__init__(core)
         @self.router.post("/register")
-        def register(name: str, path: str, module: str, callable: str):
-            if not _is_allowed(path):
-                raise HTTPException(400, f"path '{path}' is not in allowed list: {settings.allowed_integration_paths}")
-            if path not in sys.path: sys.path.append(path)
-            mod = importlib.import_module(module); getattr(mod, callable)
-            sig = _sha256(_module_file(module))
-            data = load_reg()
-            data["integrations"] = [x for x in data["integrations"] if x.get("name") != name]
-            data["integrations"].append({"name":name,"path":path,"module":module,"callable":callable,"sig":sig})
-            save_reg(data); return {"ok": True, "sig": sig}
+        def register(
+            payload: IntegrationDefinition | None = Body(default=None),
+            name: str | None = None,
+            path: str | None = None,
+            module: str | None = None,
+            callable: str | None = None,
+        ):
+            if payload is not None:
+                data = IntegrationDefinition.from_payload(payload)
+            else:
+                if not all([name, path, module, callable]):
+                    raise HTTPException(400, "name, path, module and callable are required")
+                data = IntegrationDefinition(name=name or "", path=path or "", module=module or "", callable=callable or "")
+
+            if not _is_allowed(data.path):
+                raise HTTPException(400, f"path '{data.path}' is not in allowed list: {settings.allowed_integration_paths}")
+            if data.path not in sys.path:
+                sys.path.append(data.path)
+            mod = importlib.import_module(data.module)
+            getattr(mod, data.callable)
+            sig = _sha256(_module_file(data.module))
+            registry = load_reg()
+            data.sig = sig
+            registry.upsert(data)
+            save_reg(registry)
+            return {"ok": True, "sig": sig}
         @self.router.get("/list")
-        def listing(): return load_reg()
+        def listing():
+            return load_reg().to_payload()
         @self.router.post("/call")
-        def call(name: str, callable: str | None = None, kwargs: dict | None = None, mode: str = "inproc", verify_sig: int = 1):
-            data = load_reg(); it = next((x for x in data["integrations"] if x["name"] == name), None)
-            if not it: raise HTTPException(404, "integration not found")
-            if not _is_allowed(it["path"]): raise HTTPException(400, f"path '{it['path']}' is not allowed anymore")
-            if it["path"] not in sys.path: sys.path.append(it["path"])
-            if verify_sig:
-                cur = _sha256(_module_file(it["module"]))
-                if cur and cur != it.get("sig",""): raise HTTPException(400, "signature mismatch")
-            if kwargs is None: kwargs = {}
-            if not isinstance(kwargs, dict):
+        def call(
+            name: str,
+            callable: str | None = None,
+            kwargs: dict | None = None,
+            mode: str = "inproc",
+            verify_sig: int = 1,
+        ):
+            registry = load_reg()
+            integration = registry.find(name)
+            if not integration:
+                raise HTTPException(404, "integration not found")
+            if not _is_allowed(integration.path):
+                raise HTTPException(400, f"path '{integration.path}' is not allowed anymore")
+            if integration.path not in sys.path:
+                sys.path.append(integration.path)
+            raw_kwargs = kwargs or {}
+            if not isinstance(raw_kwargs, dict):
                 raise HTTPException(400, "kwargs must be a JSON object")
-            if "kwargs" in kwargs and len(kwargs) == 1 and isinstance(kwargs["kwargs"], dict):
-                kwargs = kwargs["kwargs"]
-            target_callable = callable or it.get("callable")
+            req = IntegrationCallRequest(
+                name=name,
+                callable=callable,
+                kwargs=raw_kwargs,
+                mode=mode,
+                verify_sig=bool(verify_sig),
+            )
+            if req.verify_sig:
+                cur = _sha256(_module_file(integration.module))
+                if cur and cur != (integration.sig or ""):
+                    raise HTTPException(400, "signature mismatch")
+            call_kwargs = req.kwargs or {}
+            target_callable = req.callable or integration.callable
             if not target_callable:
                 raise HTTPException(400, "callable not specified")
-            module_name = it["module"]
+            module_name = integration.module
             func_name = target_callable
             if "." in target_callable:
                 mod_part, func_part = target_callable.rsplit(".", 1)
                 if mod_part != module_name:
                     raise HTTPException(400, "callable must belong to the registered module")
                 module_name, func_name = mod_part, func_part
-            if mode == "inproc":
+            if req.mode == "inproc":
                 mod = importlib.import_module(module_name)
                 fn = getattr(mod, func_name)
-                return {"result": fn(**kwargs)}
+                return IntegrationCallResult(result=fn(**call_kwargs)).to_payload()
+            runner = os.path.join(os.path.dirname(__file__), "runner.py")
+            payload = json.dumps({"module": module_name, "callable": func_name, "kwargs": call_kwargs})
+            proc = subprocess.run([sys.executable, runner], input=payload, text=True, capture_output=True, timeout=30)
+            import json as _json
+
+            try:
+                resp = _json.loads(proc.stdout)
+            except Exception:
+                resp = IntegrationCallResult(ok=False, stdout=proc.stdout, stderr=proc.stderr).to_payload()
             else:
-                runner = os.path.join(os.path.dirname(__file__), "runner.py")
-                payload = json.dumps({"module": module_name, "callable": func_name, "kwargs": kwargs})
-                proc = subprocess.run([sys.executable, runner], input=payload, text=True, capture_output=True, timeout=30)
-                import json as _json
-                try: resp = _json.loads(proc.stdout)
-                except Exception: resp = {"ok": False, "stdout": proc.stdout, "stderr": proc.stderr}
                 return resp
+            return resp
         @self.router.post("/scaffold")
         def scaffold(name: str, target_dir: str):
             os.makedirs(target_dir, exist_ok=True)
