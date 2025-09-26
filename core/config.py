@@ -1,5 +1,6 @@
 import os
 
+
 def _split_paths(val: str):
     parts = [p.strip() for p in (val or "").split(",") if p.strip()]
     if not parts:
@@ -12,6 +13,7 @@ def _split_paths(val: str):
             norm.append(ap)
     return norm
 
+
 class Settings:
     def __init__(self):
         self.env = os.getenv("COMAN_ENV", "dev")
@@ -23,5 +25,6 @@ class Settings:
         self.openrouter_api_key = os.getenv("OPENROUTER_API_KEY", "")
         self.openrouter_base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
         self.telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+
 
 settings = Settings()
