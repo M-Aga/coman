@@ -1,4 +1,12 @@
-from coman.modules.telegram_module.bot import run
+"""Compatibility wrapper to launch the Telegram bot.
 
-if __name__ == "__main__":
-    run()
+Historically the Telegram distribution shipped its own ``main.py``.
+The unified CLI in :mod:`coman.modules.main` now provides the same
+behaviour, so this thin wrapper keeps existing commands working.
+"""
+
+from coman.modules.main import run_telegram_bot
+
+
+if __name__ == "__main__":  # pragma: no cover - CLI invocation
+    run_telegram_bot()
