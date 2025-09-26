@@ -1,0 +1,56 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Capabilities</title>
+<style>
+body{font-family:system-ui,Arial;margin:24px}
+table{border-collapse:collapse;width:100%;max-width:960px}
+td,th{border:1px solid #ddd;padding:6px;vertical-align:top}
+textarea{width:100%;height:80px}
+.inline-form{display:inline-block;margin-right:6px;vertical-align:top}
+.inline-form input{margin:2px 0}
+.inline-form textarea{width:180px;height:70px}
+.inline-form button{margin-top:4px}
+.cap-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;max-width:960px;margin-bottom:16px}
+.cap-form textarea{grid-column:1/-1}
+.actions{white-space:nowrap}
+</style></head>
+<body>
+<h2>Capabilities</h2>
+<p>Seed initial capability information or adjust existing entries without leaving the browser.</p>
+{% if caps.capabilities %}
+<table>
+<tr><th>Name</th><th>Kind</th><th>Endpoint</th><th>Description</th><th>Actions</th></tr>
+{% for c in caps.capabilities %}
+<tr>
+<td>{{c.name}}</td>
+<td>{{c.kind}}</td>
+<td>{{c.endpoint}}</td>
+<td>{{c.description}}</td>
+<td class="actions">
+<form method="post" action="/ui/capabilities/update" class="inline-form">
+<input type="hidden" name="original_name" value="{{c.name}}">
+<input name="name" value="{{c.name}}" required>
+<input name="kind" value="{{c.kind}}">
+<input name="endpoint" value="{{c.endpoint}}">
+<textarea name="description">{{c.description}}</textarea>
+<button type="submit">Update</button>
+</form>
+<form method="post" action="/ui/capabilities/delete" class="inline-form">
+<input type="hidden" name="name" value="{{c.name}}">
+<button type="submit">Delete</button>
+</form>
+</td>
+</tr>
+{% endfor %}
+</table>
+{% else %}
+<p><em>No capabilities registered yet. Use the form below to add one.</em></p>
+{% endif %}
+<h3>Add capability</h3>
+<form method="post" action="/ui/capabilities/register" class="cap-form">
+<input name="name" placeholder="my-capability" required>
+<input name="kind" placeholder="webhook" value="webhook">
+<input name="endpoint" placeholder="https://example.com/hook">
+<textarea name="description" placeholder="Human friendly description"></textarea>
+<button type="submit">Add</button>
+</form>
+<p><a href="/ui">← back</a></p>
+</body></html>

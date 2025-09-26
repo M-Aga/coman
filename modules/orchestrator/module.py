@@ -16,9 +16,33 @@ class Module(BaseModule):
         @self.router.get("/capabilities")
         def capabilities(): return load_caps()
         @self.router.post("/capabilities/register")
-        def cap_register(name: str, kind: str = "webhook", endpoint: str = "", description: str = ""):
-            data = load_caps(); data["capabilities"].append({"name":name,"kind":kind,"endpoint":endpoint,"description":description})
-            save_caps(data); return {"ok": True, "count": len(data["capabilities"])}
+        def cap_register(
+            name: str,
+            kind: str = "webhook",
+            endpoint: str = "",
+            description: str = "",
+            original_name: str | None = None,
+        ):
+            target_names = {name}
+            if original_name:
+                target_names.add(original_name)
+            data = load_caps()
+            data["capabilities"] = [x for x in data["capabilities"] if x.get("name") not in target_names]
+            data["capabilities"].append({
+                "name": name,
+                "kind": kind,
+                "endpoint": endpoint,
+                "description": description,
+            })
+            save_caps(data)
+            return {"ok": True, "count": len(data["capabilities"])}
+        @self.router.post("/capabilities/delete")
+        def cap_delete(name: str):
+            data = load_caps()
+            before = len(data.get("capabilities", []))
+            data["capabilities"] = [x for x in data["capabilities"] if x.get("name") != name]
+            save_caps(data)
+            return {"ok": True, "deleted": before - len(data["capabilities"])}
         @self.router.post("/extensions/reload")
         def reload_ext(dir_path: str = "./extensions"):
             loaded = []
