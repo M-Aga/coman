@@ -9,6 +9,45 @@ def mount_ui(app):
     @router.get("/ui", response_class=HTMLResponse)
     def index(request: Request):
         return templates.TemplateResponse("index.html", {"request": request})
+    @router.get("/ui/capabilities", response_class=HTMLResponse)
+    def cap_view(request: Request):
+        with httpx.Client(timeout=10) as c:
+            caps = c.get(f"{settings.api_base}/orchestrator/capabilities").json()
+        return templates.TemplateResponse("capabilities.html", {"request": request, "caps": caps})
+    @router.post("/ui/capabilities/register")
+    def cap_register(request: Request, name: str, kind: str = "webhook", endpoint: str = "", description: str = ""):
+        with httpx.Client(timeout=10) as c:
+            c.post(
+                f"{settings.api_base}/orchestrator/capabilities/register",
+                params={"name": name, "kind": kind, "endpoint": endpoint, "description": description},
+            )
+        return RedirectResponse(url="/ui/capabilities", status_code=303)
+    @router.post("/ui/capabilities/update")
+    def cap_update(
+        request: Request,
+        original_name: str,
+        name: str,
+        kind: str = "webhook",
+        endpoint: str = "",
+        description: str = "",
+    ):
+        with httpx.Client(timeout=10) as c:
+            c.post(
+                f"{settings.api_base}/orchestrator/capabilities/register",
+                params={
+                    "original_name": original_name,
+                    "name": name,
+                    "kind": kind,
+                    "endpoint": endpoint,
+                    "description": description,
+                },
+            )
+        return RedirectResponse(url="/ui/capabilities", status_code=303)
+    @router.post("/ui/capabilities/delete")
+    def cap_delete(request: Request, name: str):
+        with httpx.Client(timeout=10) as c:
+            c.post(f"{settings.api_base}/orchestrator/capabilities/delete", params={"name": name})
+        return RedirectResponse(url="/ui/capabilities", status_code=303)
     @router.get("/ui/tools", response_class=HTMLResponse)
     def tools_view(request: Request):
         with httpx.Client(timeout=10) as c:
