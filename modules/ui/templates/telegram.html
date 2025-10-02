@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Coman UI &mdash; Telegram Bot</title>
+  <style>
+    body{font-family:system-ui,Arial;margin:24px}
+    a{color:#0a6}
+    .card{border:1px solid #ddd;border-radius:12px;padding:16px;margin:12px 0}
+    form{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+    label{font-weight:600}
+    input[type="password"],input[type="text"]{padding:8px;border:1px solid #ccc;border-radius:8px;font-size:15px}
+    .actions{display:flex;gap:8px}
+    button{padding:8px 16px;border-radius:8px;border:1px solid #0a6;background:#0a6;color:#fff;cursor:pointer}
+    button:hover{background:#088}
+    button.secondary{background:#fff;color:#0a6}
+    button.secondary:hover{background:#f0f7f4}
+    .notice{border-radius:8px;padding:10px;margin:8px 0}
+    .notice.success{background:#e6f4ea;color:#0a6;border:1px solid #8bc49b}
+    .notice.error{background:#fdecea;color:#b00020;border:1px solid #f5c2c7}
+    .notice.info{background:#eef5ff;color:#1b4d89;border:1px solid #9db5e0}
+    .status-block{margin-top:16px}
+    .status-row{display:flex;gap:8px;margin:4px 0}
+    .status-row dt{font-weight:600;min-width:110px}
+    .hint{font-size:13px;color:#666}
+  </style>
+</head>
+<body>
+  <h1>Telegram Bot</h1>
+  <p><a href="/ui">&larr; Back to dashboard</a></p>
+  <div class="card">
+    {% if message %}
+    <div class="notice success">{{ message }}</div>
+    {% endif %}
+    {% if error %}
+    <div class="notice error">{{ error }}</div>
+    {% endif %}
+    <form method="post" action="/ui/telegram/save">
+      <div>
+        <label for="token">Telegram bot token</label>
+        <input id="token" name="token" type="password" placeholder="123456:ABC-DEF..." autocomplete="off">
+        <p class="hint">Paste the token issued by @BotFather. It will be stored on the server and used for the Telegram bridge.</p>
+      </div>
+      <div class="actions">
+        <button type="submit" name="action" value="save">Save token</button>
+        <button type="submit" name="action" value="clear" class="secondary">Clear token</button>
+      </div>
+    </form>
+    {% if status.get('source') == 'env' %}
+    <div class="notice info">Token is currently provided via the <code>TELEGRAM_BOT_TOKEN</code> environment variable. Saving a new token here overrides it until the next restart.</div>
+    {% endif %}
+    <div class="status-block">
+      <h2>Status</h2>
+      {% if status %}
+      {% set source = status.get('source', 'unknown') %}
+      {% if source == 'env' %}{% set source_label = 'Environment' %}
+      {% elif source == 'file' %}{% set source_label = 'Saved file' %}
+      {% elif source == 'none' %}{% set source_label = 'Not configured' %}
+      {% else %}{% set source_label = source|capitalize %}{% endif %}
+      <dl>
+        <div class="status-row"><dt>Configured:</dt><dd>{{ 'Yes' if status.get('configured') else 'No' }}</dd></div>
+        <div class="status-row"><dt>Running:</dt><dd>{{ 'Yes' if status.get('running') else 'No' }}</dd></div>
+        <div class="status-row"><dt>Source:</dt><dd>{{ source_label }}</dd></div>
+        {% if status.get('token_tail') %}
+        <div class="status-row"><dt>Token suffix:</dt><dd>&hellip;{{ status.get('token_tail') }}</dd></div>
+        {% endif %}
+      </dl>
+      {% else %}
+      <p>No status information is currently available.</p>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>

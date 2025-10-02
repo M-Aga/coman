@@ -26,6 +26,7 @@ if errorlevel 1 (
 set EXIT_CODE=%ERRORLEVEL%
 
 :cleanup
+
 popd
 
 exit /b %EXIT_CODE%

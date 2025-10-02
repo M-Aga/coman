@@ -35,9 +35,12 @@ class Module(BaseModule):
 
         @self.router.get("/status")
         def status():
+            token = settings.telegram_bot_token
             return {
-                "configured": bool(settings.telegram_bot_token),
+                "configured": bool(token),
                 "running": bool(self._th and self._th.is_alive()),
+                "source": getattr(settings, "telegram_token_source", "env" if token else "none"),
+                "token_tail": token[-4:] if token else "",
             }
 
         @self.router.post("/start")
@@ -60,6 +63,16 @@ class Module(BaseModule):
             except Exception:
                 pass
             return {"stopped": True}
+
+        @self.router.post("/token")
+        def set_token(token: str = Body("", embed=True)):
+            settings.store_telegram_bot_token(token)
+            current = settings.telegram_bot_token
+            return {
+                "configured": bool(current),
+                "source": getattr(settings, "telegram_token_source", "env" if current else "none"),
+                "token_tail": current[-4:] if current else "",
+            }
 
     def _runner(self):
         # создаём event loop в потоке, чтобы не было "There is no current event loop"
