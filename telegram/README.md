@@ -1,65 +1,69 @@
-# Coman Telegram Module (o1)
+# Coman Telegram Service
 
-Готовый к запуску модуль Telegram для проекта **Coman**. Простая, надёжная архитектура (модель **o1**): без лишних зависимостей, с понятной структурой и точками интеграции с ядром/оркестратором Coman через REST API.
+This directory contains the standalone Telegram bot runner that ships with the
+Coman platform.  The service is also exposed through the unified CLI so you can
+launch it with ``python -m coman.modules.main telegram`` (or via ``run_coman.bat``
+on Windows).
 
-## Возможности
-- Многоуровневое меню (inline-кнопки)
-- Хранение пользователей (SQLite): язык, роль, username
-- Роли: `user`, `admin` (админы — из БД или через `TELEGRAM_ADMIN_IDS`)
-- Простая локализация (RU/EN) без внешних `.po/.mo`
-- Интеграция с ядром через REST (`/v1/info`, `/v1/process_text`, `/health`)
-- Проверка статуса ядра по кнопке и командой `/status`
-- Готов к **Docker**
+## Prerequisites
 
-## Быстрый старт (локально)
-1. Установите зависимости:
-   ```bash
-   pip install -r requirements.txt
-   ```
-2. Скопируйте `.env.example` в `.env` и заполните `TELEGRAM_BOT_TOKEN`:
-   ```bash
-   cp .env.example .env
-   # отредактируйте .env
-   ```
-3. Экспортируйте переменные окружения (или используйте dotenv-настройку вашей среды):
-   ```bash
-   export $(grep -v '^#' .env | xargs)
-   ```
-4. Запустите:
-   ```bash
-   python main.py
-   ```
+* Python 3.10+
+* Telegram bot token (create one via @BotFather)
+* Optional: a local SQLite database path for storing user profiles
 
-## Docker
+Install the dependencies alongside the rest of the project:
+
 ```bash
-docker build -t coman-telegram-o1:latest .
-docker run --rm -it \
-  --env-file .env \
-  -v $(pwd)/bot_users.db:/app/bot_users.db \
-  coman-telegram-o1:latest
+pip install -r modules/requirements.txt
 ```
 
-## Конфигурация (переменные окружения)
-- `TELEGRAM_BOT_TOKEN` — **обязателен**
-- `TELEGRAM_ADMIN_IDS` — список ID админов (через `,` или `;`)
-- `COMAN_API_BASE_URL` — URL ядра/оркестратора Coman (по умолчанию `http://localhost:8000`)
-- `COMAN_API_TOKEN` — токен доступа к API (если нужен)
-- `COMAN_API_TIMEOUT_S` — таймаут запросов (секунды, по умолчанию 12)
-- `COMAN_TG_DB_PATH` — путь к SQLite базе (`bot_users.db`)
-- `COMAN_TG_DEFAULT_LANG` — язык по умолчанию (`ru`)
+## Configuration
 
-## Точки интеграции
-- Реальные эндпоинты замените в `coman/modules/telegram_module/api.py`
-- При необходимости подключите ваши модули в `handlers.py` и вызывайте их внутри `on_text`/`cb_menu`
+Create a ``.env`` file next to this README and populate the variables:
 
-## Команды
-- `/start`, `/menu`, `/help` — открыть главное меню с подсказками
-- `/status` — получить актуальный статус ядра и сведения об оркестраторе
-- Меню: **Получить данные**, **Отправить данные**, **О боте**, **Настройки**, **Админ-панель** (для админов)
+```
+TELEGRAM_BOT_TOKEN=1234567890:ABCDEF
+TELEGRAM_ADMIN_IDS=12345,67890
+COMAN_API_BASE_URL=http://localhost:8000
+COMAN_API_TIMEOUT_S=12
+COMAN_TG_DB_PATH=bot_users.db
+COMAN_TG_DEFAULT_LANG=ru
+```
 
-## Миграции БД
-Первая загрузка автоматически создаёт таблицу `users`.
+## Running the bot
 
-## Примечания
-- Модуль использует `python-telegram-bot v21` (асинхронные обработчики, но простой запуск).
-- При высокой нагрузке можно вынести БД и API-клиент в отдельные сервисы, а также добавить кэш.
+* **Via the unified CLI:**
+  ```bash
+  python -m coman.modules.main telegram
+  ```
+* **Direct execution:**
+  ```bash
+  python telegram/main.py
+  ```
+* **Windows helper:** execute ``run_coman.bat telegram``
+
+The runner will reuse the FastAPI client utilities defined in the core package
+so the bot can query the HTTP API for integration data.
+
+## Docker usage
+
+```bash
+docker build -t coman-telegram:latest telegram/
+docker run --rm -it --env-file telegram/.env coman-telegram:latest
+```
+
+Mount a volume for ``bot_users.db`` if you want to persist the SQLite data:
+
+```bash
+docker run --rm -it --env-file telegram/.env \
+  -v $(pwd)/telegram/bot_users.db:/app/bot_users.db \
+  coman-telegram:latest
+```
+
+## Troubleshooting
+
+* **401 from the API** – double check the API base URL and authentication
+  headers configured in ``telegram/config.py``.
+* **Module import errors** – ensure you installed dependencies and that the
+  project root is on ``PYTHONPATH`` (this is handled automatically when running
+  through the CLI).
