@@ -41,11 +41,17 @@ them:
 python -m coman.modules.main api       # FastAPI core with all registered modules
 python -m coman.modules.main telegram  # Telegram bot runner
 python -m coman.modules.main all       # Run both concurrently
+python -m coman.modules.main modules   # List available modules and operations
+python -m coman.modules.main call analysis frequency --arg text="hello world"
 ```
 
 The CLI loads every module via ``coman.core.registry.load_modules`` and exposes
 the resulting FastAPI application.  Custom modules that follow the same
 structure can be dropped into this folder and will be discovered automatically.
+When invoking modules from the console the CLI reuses the same module
+implementations that power the API, so business logic only needs to be defined
+once.  Arguments for ``call`` can be provided either as ``key=value`` pairs or
+via ``--json`` with a full payload.
 
 ## Adding a new module
 
