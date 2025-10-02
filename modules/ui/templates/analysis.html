@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Coman UI &mdash; Text Analysis</title>
+  <style>
+    body{font-family:system-ui,Arial;margin:24px}
+    a{color:#0a6}
+    .card{border:1px solid #ddd;border-radius:12px;padding:16px;margin:12px 0}
+    textarea{width:100%;min-height:160px;font-family:inherit;padding:8px;border-radius:8px;border:1px solid #ccc}
+    button{padding:8px 16px;border-radius:8px;border:1px solid #0a6;background:#0a6;color:#fff;cursor:pointer}
+    button:hover{background:#088}
+    .error{color:#b00020;margin-top:12px}
+    pre{background:#f7f7f7;padding:12px;border-radius:8px;overflow:auto}
+  </style>
+</head>
+<body>
+  <h1>Text Analysis</h1>
+  <p><a href="/ui">&larr; Back to dashboard</a></p>
+  <div class="card">
+    <form method="post" action="/ui/analysis/run">
+      <label for="text">Enter text to analyse word frequency:</label>
+      <textarea id="text" name="text" required>{{ text }}</textarea>
+      <div style="margin-top:12px">
+        <button type="submit">Analyse</button>
+      </div>
+    </form>
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+    {% if result_json %}
+    <h2>Result</h2>
+    <pre>{{ result_json }}</pre>
+    {% endif %}
+  </div>
+</body>
+</html>
