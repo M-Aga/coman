@@ -34,16 +34,31 @@ class IntegrationRegistry(ModuleResponse):
 
     integrations: List[IntegrationDefinition] = Field(default_factory=list)
 
+    def __init__(self, **data: Any) -> None:
+        super().__init__(**data)
+        self._ensure_models()
+
     def upsert(self, integration: IntegrationDefinition) -> None:
+        self._ensure_models()
         current = [it for it in self.integrations if it.name != integration.name]
         current.append(integration)
         self.integrations = current
 
     def find(self, name: str) -> Optional[IntegrationDefinition]:
+        self._ensure_models()
         for it in self.integrations:
             if it.name == name:
                 return it
         return None
+
+    def _ensure_models(self) -> None:
+        converted: List[IntegrationDefinition] = []
+        for item in self.integrations:
+            if isinstance(item, IntegrationDefinition):
+                converted.append(item)
+            else:
+                converted.append(IntegrationDefinition.from_payload(item))
+        self.integrations = converted
 
 
 class IntegrationCallRequest(ModuleRequest):
