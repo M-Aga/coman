@@ -14,7 +14,20 @@ if exist .venv\Scripts\python.exe (
 
 set EXIT_CODE=0
 
-"%PYTHON%" -c "import importlib, sys\nmissing = []\nfor name in ['fastapi','pydantic','httpx','apscheduler']:\n    try:\n        importlib.import_module(name)\n    except Exception:\n        missing.append(name)\ntry:\n    import telegram  # ensure python-telegram-bot is installed\nexcept Exception:\n    missing.append('python-telegram-bot')\nif missing:\n    print('[Coman] Missing dependencies: ' + ', '.join(missing))\n    sys.exit(1)\n"
+"%PYTHON%" -c "import importlib, sys;"^
+    "missing = [];"^
+    "for name in ['fastapi','pydantic','httpx','apscheduler']:"^
+    "    try:"^
+    "        importlib.import_module(name)"^
+    "    except Exception:"^
+    "        missing.append(name);"^
+    "try:"^
+    "    import telegram"^
+    "except Exception:"^
+    "    missing.append('python-telegram-bot');"^
+    "if missing:"^
+    "    print('[Coman] Missing dependencies: ' + ', '.join(missing));"^
+    "    sys.exit(1)"
 if errorlevel 1 (
     echo [Coman] Install the required packages with:
     echo [Coman]     pip install -r modules\requirements.txt
