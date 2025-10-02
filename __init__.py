@@ -1,2 +1,2 @@
-﻿__all__ = ['core','modules']
+__all__ = ['core','modules']
 

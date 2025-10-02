@@ -30,7 +30,12 @@ run_coman.bat          # Windows helper that executes ``python -m coman.modules.
    python -m venv .venv
    source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
    ```
-2. **Install dependencies:**
+2. **Install dependencies:** the ``modules/requirements.txt`` file now bundles
+   the core runtime packages (FastAPI, Pydantic, APScheduler, httpx, and the
+   Telegram bot SDK) so a single install step prepares both the API and bot
+   runners.
+=======
+
    ```bash
    pip install -r modules/requirements.txt uvicorn
    ```
@@ -58,6 +63,14 @@ pytest
   commands from the project root *after* installing the package requirements.
   The new ``coman`` package exposes the existing ``core`` and ``modules``
   directories so importing ``coman.*`` works without additional monkey-patching.
+
+* ``ModuleNotFoundError`` for ``fastapi``, ``pydantic``, ``apscheduler`` or
+  ``telegram`` – install the runtime dependencies with
+  ``pip install -r modules/requirements.txt``.  The repository exposes a
+  ``telegram`` shim that forwards imports to the upstream
+  ``python-telegram-bot`` package while keeping ``telegram.coman`` available,
+  so the real SDK must be present in the environment.
+
 * ``uvicorn`` import errors – install the web server with
   ``pip install uvicorn`` or run the API service via the CLI which will raise a
   helpful message if the dependency is missing.

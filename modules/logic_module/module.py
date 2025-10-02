@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 from coman.core.base_module import BaseModule
 from .db import get_conn
 class Module(BaseModule):

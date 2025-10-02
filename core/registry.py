@@ -1,4 +1,4 @@
-﻿import importlib, pkgutil
+import importlib, pkgutil
 from typing import Dict, Type
 from .base_module import BaseModule
 class Core:

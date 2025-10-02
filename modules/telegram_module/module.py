@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 import asyncio, json, threading, time
 import httpx
 from fastapi import Body
