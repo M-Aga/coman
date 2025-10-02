@@ -73,6 +73,7 @@ def mount_ui(app):
             )
         return RedirectResponse(url="/ui/integrations", status_code=303)
 
+
     @router.get("/ui/telegram", response_class=HTMLResponse)
     def telegram_view(request: Request):
         status = {}
@@ -125,6 +126,7 @@ def mount_ui(app):
 
         context = {"request": request, "status": status, "message": message, "error": error}
         return templates.TemplateResponse("telegram.html", context)
+
 
     @router.get("/ui/rules", response_class=HTMLResponse)
     def rules_view(request: Request):
