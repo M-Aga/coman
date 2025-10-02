@@ -1,4 +1,4 @@
-﻿import os, sqlite3
+import os, sqlite3
 from coman.core.config import settings
 DB_PATH = os.path.join(settings.data_dir, "logic.db")
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)

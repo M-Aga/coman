@@ -1,63 +1,57 @@
-# Coman Telegram Module (o1)
+# Coman Modules Package
 
-Готовый к запуску модуль Telegram для проекта **Coman**. Простая, надёжная архитектура (модель **o1**): без лишних зависимостей, с понятной структурой и точками интеграции с ядром/оркестратором Coman через REST API.
+The ``modules`` package hosts the feature plugins that extend the Coman core.
+Each module inherits from ``coman.core.base_module.BaseModule`` and can register
+API endpoints, background workers, and capability metadata that the orchestrator
+exposes through the FastAPI layer.
 
-## Возможности
-- Многоуровневое меню (inline-кнопки)
-- Хранение пользователей (SQLite): язык, роль, username
-- Роли: `user`, `admin` (админы — из БД или через `TELEGRAM_ADMIN_IDS`)
-- Простая локализация (RU/EN) без внешних `.po/.mo`
-- Интеграция с ядром через REST (`/v1/info`, `/v1/process_text`, `/health`)
-- Готов к **Docker**
+## Available modules
 
-## Быстрый старт (локально)
-1. Установите зависимости:
-   ```bash
-   pip install -r requirements.txt
-   ```
-2. Скопируйте `.env.example` в `.env` и заполните `TELEGRAM_BOT_TOKEN`:
-   ```bash
-   cp .env.example .env
-   # отредактируйте .env
-   ```
-3. Экспортируйте переменные окружения (или используйте dotenv-настройку вашей среды):
-   ```bash
-   export $(grep -v '^#' .env | xargs)
-   ```
-4. Запустите:
-   ```bash
-   python main.py
-   ```
+| Module | Purpose |
+| ------ | ------- |
+| ``analysis_module`` | Simple analytics pipeline with capability registration |
+| ``defense_system`` | Demonstration defensive automation hooks |
+| ``integration`` | Example integration surface used by the unit tests |
+| ``logic_app`` | Glue logic for external logic apps |
+| ``logic_module`` | Rule engine showcase |
+| ``manager`` | Resource orchestration helpers |
+| ``orchestrator`` | Registers composite workflows with the core |
+| ``resource_manager`` | Asset and dependency tracking |
+| ``speech_module`` | Speech synthesis/recognition placeholders |
+| ``telegram_module`` | Telegram bot wiring reused by the CLI |
+| ``text_module`` | Text processing helpers |
+| ``ui`` | Static UI bundle that can be mounted into the FastAPI app |
+| ``webscraper_module`` | Basic scraping utilities |
 
-## Docker
-```bash
-docker build -t coman-telegram-o1:latest .
-docker run --rm -it \
-  --env-file .env \
-  -v $(pwd)/bot_users.db:/app/bot_users.db \
-  coman-telegram-o1:latest
+Each folder follows the same convention:
+
+```
+modules/<module_name>/
+    __init__.py
+    module.py        # entry point that exposes a ``Module`` subclass
+    ...              # supporting files/resources
 ```
 
-## Конфигурация (переменные окружения)
-- `TELEGRAM_BOT_TOKEN` — **обязателен**
-- `TELEGRAM_ADMIN_IDS` — список ID админов (через `,` или `;`)
-- `COMAN_API_BASE_URL` — URL ядра/оркестратора Coman (по умолчанию `http://localhost:8000`)
-- `COMAN_API_TOKEN` — токен доступа к API (если нужен)
-- `COMAN_API_TIMEOUT_S` — таймаут запросов (секунды, по умолчанию 12)
-- `COMAN_TG_DB_PATH` — путь к SQLite базе (`bot_users.db`)
-- `COMAN_TG_DEFAULT_LANG` — язык по умолчанию (`ru`)
+## Running services from the package
 
-## Точки интеграции
-- Реальные эндпоинты замените в `coman/modules/telegram_module/api.py`
-- При необходимости подключите ваши модули в `handlers.py` и вызывайте их внутри `on_text`/`cb_menu`
+Use the unified CLI to load the modules and start the services that depend on
+them:
 
-## Команды
-- `/start`, `/menu`, `/help` — открыть главное меню
-- Меню: **Получить данные**, **Отправить данные**, **О боте**, **Настройки**, **Админ-панель** (для админов)
+```bash
+python -m coman.modules.main api       # FastAPI core with all registered modules
+python -m coman.modules.main telegram  # Telegram bot runner
+python -m coman.modules.main all       # Run both concurrently
+```
 
-## Миграции БД
-Первая загрузка автоматически создаёт таблицу `users`.
+The CLI loads every module via ``coman.core.registry.load_modules`` and exposes
+the resulting FastAPI application.  Custom modules that follow the same
+structure can be dropped into this folder and will be discovered automatically.
 
-## Примечания
-- Модуль использует `python-telegram-bot v21` (асинхронные обработчики, но простой запуск).
-- При высокой нагрузке можно вынести БД и API-клиент в отдельные сервисы, а также добавить кэш.
+## Adding a new module
+
+1. Create a new directory under ``modules/`` with an ``__init__.py`` file.
+2. Implement a ``module.py`` that exposes a ``Module`` class inheriting from
+   ``BaseModule``.
+3. Register any API routes, dependencies, or background tasks inside the module.
+4. Re-run ``python -m coman.modules.main api`` to see the module available via
+   the HTTP API.

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 from coman.core.base_module import BaseModule
 from fastapi import Query
 class Module(BaseModule):

@@ -1,4 +1,4 @@
-﻿from fastapi import FastAPI
+from fastapi import FastAPI
 from .registry import Core
 from .scheduler import Scheduler
 from coman.modules.ui.mount import mount_ui

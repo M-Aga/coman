@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 from coman.core.base_module import BaseModule
 class Module(BaseModule):
     name = "analysis"; description = "Light text analysis"

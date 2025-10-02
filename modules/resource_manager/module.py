@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 from coman.core.base_module import BaseModule
 import psutil
 class Module(BaseModule):

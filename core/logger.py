@@ -1,4 +1,4 @@
-﻿from rich.logging import RichHandler
+from rich.logging import RichHandler
 import logging, os
 def get_logger(name: str):
     level = os.getenv("COMAN_LOG_LEVEL", "INFO").upper()

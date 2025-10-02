@@ -1,4 +1,4 @@
-﻿import importlib, json, sys, traceback
+import importlib, json, sys, traceback
 def main():
     try:
         payload = json.load(sys.stdin)
