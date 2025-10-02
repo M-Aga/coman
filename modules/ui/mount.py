@@ -73,6 +73,61 @@ def mount_ui(app):
             )
         return RedirectResponse(url="/ui/integrations", status_code=303)
 
+
+    @router.get("/ui/telegram", response_class=HTMLResponse)
+    def telegram_view(request: Request):
+        status = {}
+        error = None
+        with httpx.Client(timeout=10) as c:
+            try:
+                resp = c.get(f"{settings.api_base}/telegram/status")
+                resp.raise_for_status()
+                try:
+                    status = resp.json()
+                except ValueError:
+                    status = {}
+                    error = "Unexpected response from API"
+            except httpx.HTTPError as exc:
+                error = f"Request failed: {exc}"
+        context = {"request": request, "status": status, "message": None, "error": error}
+        return templates.TemplateResponse("telegram.html", context)
+
+    @router.post("/ui/telegram/save", response_class=HTMLResponse)
+    def telegram_save(request: Request, token: str = Form(""), action: str = Form("save")):
+        status = {}
+        error = None
+        message = None
+        payload_token = "" if action == "clear" else token.strip()
+
+        with httpx.Client(timeout=10) as c:
+            try:
+                resp = c.post(f"{settings.api_base}/telegram/token", json={"token": payload_token})
+                resp.raise_for_status()
+                message = "Token saved" if payload_token.strip() else "Token cleared"
+                try:
+                    status = resp.json()
+                except ValueError:
+                    status = {}
+                    error = "Unexpected response from API"
+            except httpx.HTTPError as exc:
+                error = f"Request failed: {exc}"
+
+            if not status:
+                try:
+                    status_resp = c.get(f"{settings.api_base}/telegram/status")
+                    status_resp.raise_for_status()
+                    status = status_resp.json()
+                except httpx.HTTPError as exc:
+                    if not error:
+                        error = f"Failed to fetch status: {exc}"
+                except ValueError:
+                    if not error:
+                        error = "Failed to parse status response"
+
+        context = {"request": request, "status": status, "message": message, "error": error}
+        return templates.TemplateResponse("telegram.html", context)
+
+
     @router.get("/ui/rules", response_class=HTMLResponse)
     def rules_view(request: Request):
         with httpx.Client(timeout=10) as c:
