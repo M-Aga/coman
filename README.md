@@ -26,26 +26,25 @@ run_coman.bat          # Windows helper that executes ``python -m coman.modules.
 ## Quick start
 
 1. **Create a virtual environment (recommended):**
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
-   ```
+    ```bash
+    python -m venv .venv
+    source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
+    ```
 2. **Install dependencies:** the ``modules/requirements.txt`` file now bundles
    the core runtime packages (FastAPI, Pydantic, APScheduler, httpx, and the
    Telegram bot SDK) so a single install step prepares both the API and bot
    runners.
-=======
 
-   ```bash
-   pip install -r modules/requirements.txt uvicorn
-   ```
+    ```bash
+    pip install -r modules/requirements.txt uvicorn
+    ```
 3. **Run one of the available services:**
-   ```bash
-   python -m coman.modules.main [api|telegram|all] [--host 0.0.0.0] [--port 8000] [--reload]
-   ```
-   * ``api`` – start the FastAPI core with every registered module
-   * ``telegram`` – launch the Telegram bot runner
-   * ``all`` – run the HTTP API and Telegram bot together (API runs in a background thread)
+    ```bash
+    python -m coman.modules.main [api|telegram|all] [--host 0.0.0.0] [--port 8000] [--reload]
+    ```
+    * ``api`` – start the FastAPI core with every registered module
+    * ``telegram`` – launch the Telegram bot runner
+    * ``all`` – run the HTTP API and Telegram bot together (API runs in a background thread)
 
 Windows users can double click ``run_coman.bat`` (or execute it from PowerShell)
 to run the same command; the script automatically prefers a local ``.venv``
