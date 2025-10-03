@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
 import sys
 from types import ModuleType
 
@@ -14,6 +15,22 @@ class _DummyFilter:
 
 
 def _install_telegram_stubs() -> None:
+    module = sys.modules.get("telegram")
+    if module is None:
+        try:  # Prefer the real implementation when available.
+            module = importlib.import_module("telegram")
+        except Exception:
+            module = None
+
+    if module is not None:
+        try:
+            ext_module = importlib.import_module("telegram.ext")
+        except Exception:
+            ext_module = None
+        else:
+            if hasattr(ext_module, "Application") and hasattr(ext_module, "ApplicationBuilder"):
+                return
+
     telegram_stub = ModuleType("telegram")
     telegram_stub.Update = object  # type: ignore[attr-defined]
 
@@ -37,9 +54,9 @@ def _install_telegram_stubs() -> None:
     ext_stub.filters = filters_stub
     ext_stub.ContextTypes = _DummyContextTypes
 
-    sys.modules.setdefault("telegram", telegram_stub)
-    sys.modules.setdefault("telegram.ext", ext_stub)
-    sys.modules.setdefault("telegram.ext.filters", filters_stub)
+    sys.modules["telegram"] = telegram_stub
+    sys.modules["telegram.ext"] = ext_stub
+    sys.modules["telegram.ext.filters"] = filters_stub
 
 
 _install_telegram_stubs()

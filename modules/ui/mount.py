@@ -1,12 +1,17 @@
+from pathlib import Path
+
 from fastapi import APIRouter, Form, Request
-from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
-from coman.core.config import settings
-import json
+from fastapi.templating import Jinja2Templates
+
 import httpx
+import json
+
+from coman.core.config import settings
 
 
-templates = Jinja2Templates(directory="coman/modules/ui/templates")
+_TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
+templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
 
 def mount_ui(app):
@@ -14,12 +19,12 @@ def mount_ui(app):
 
     @router.get("/ui", response_class=HTMLResponse)
     def index(request: Request):
-        return templates.TemplateResponse("index.html", {"request": request})
+        return templates.TemplateResponse(request, "index.html", {})
 
     @router.get("/ui/analysis", response_class=HTMLResponse)
     def analysis_view(request: Request):
-        context = {"request": request, "text": "", "result_json": None, "error": None}
-        return templates.TemplateResponse("analysis.html", context)
+        context = {"text": "", "result_json": None, "error": None}
+        return templates.TemplateResponse(request, "analysis.html", context)
 
     @router.post("/ui/analysis/run", response_class=HTMLResponse)
     def analysis_run(request: Request, text: str = Form(...)):
@@ -40,14 +45,14 @@ def mount_ui(app):
                     result_json = json.dumps(payload, ensure_ascii=False, indent=2)
                 except TypeError:
                     result_json = str(payload)
-        context = {"request": request, "text": text, "result_json": result_json, "error": error}
-        return templates.TemplateResponse("analysis.html", context)
+        context = {"text": text, "result_json": result_json, "error": error}
+        return templates.TemplateResponse(request, "analysis.html", context)
 
     @router.get("/ui/tools", response_class=HTMLResponse)
     def tools_view(request: Request):
         with httpx.Client(timeout=10) as c:
             tools = c.get(f"{settings.api_base}/manager/tools").json()
-        return templates.TemplateResponse("tools.html", {"request": request, "tools": tools})
+        return templates.TemplateResponse(request, "tools.html", {"tools": tools})
 
     @router.post("/ui/tools/register")
     def tools_register(request: Request, name: str, method: str, path: str, params: str = "", desc: str = ""):
@@ -62,7 +67,7 @@ def mount_ui(app):
     def integ_view(request: Request):
         with httpx.Client(timeout=10) as c:
             lst = c.get(f"{settings.api_base}/integration/list").json()
-        return templates.TemplateResponse("integrations.html", {"request": request, "lst": lst})
+        return templates.TemplateResponse(request, "integrations.html", {"lst": lst})
 
     @router.post("/ui/integrations/register")
     def integ_register(request: Request, name: str, path: str, module: str, callable: str):
@@ -89,8 +94,8 @@ def mount_ui(app):
                     error = "Unexpected response from API"
             except httpx.HTTPError as exc:
                 error = f"Request failed: {exc}"
-        context = {"request": request, "status": status, "message": None, "error": error}
-        return templates.TemplateResponse("telegram.html", context)
+        context = {"status": status, "message": None, "error": error}
+        return templates.TemplateResponse(request, "telegram.html", context)
 
     @router.post("/ui/telegram/save", response_class=HTMLResponse)
     def telegram_save(request: Request, token: str = Form(""), action: str = Form("save")):
@@ -124,15 +129,15 @@ def mount_ui(app):
                     if not error:
                         error = "Failed to parse status response"
 
-        context = {"request": request, "status": status, "message": message, "error": error}
-        return templates.TemplateResponse("telegram.html", context)
+        context = {"status": status, "message": message, "error": error}
+        return templates.TemplateResponse(request, "telegram.html", context)
 
 
     @router.get("/ui/rules", response_class=HTMLResponse)
     def rules_view(request: Request):
         with httpx.Client(timeout=10) as c:
             rules = c.get(f"{settings.api_base}/logic/rulesx/list").json()
-        return templates.TemplateResponse("rules.html", {"request": request, "rules": rules})
+        return templates.TemplateResponse(request, "rules.html", {"rules": rules})
 
     @router.post("/ui/rules/add")
     def rules_add(request: Request, name: str, expr_json: str, action_json: str, priority: int = 0):

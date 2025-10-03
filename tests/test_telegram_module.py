@@ -7,6 +7,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "telegram"))
 
+sys.modules.pop("telegram", None)
+sys.modules.pop("telegram.ext", None)
+sys.modules.pop("telegram.ext.filters", None)
+
 from telegram.coman.modules.telegram_module.db import DB
 from telegram.coman.modules.telegram_module import handlers
 

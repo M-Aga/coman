@@ -68,6 +68,7 @@ def telegram_module(monkeypatch):
     telegram_stub.Update = Update
 
     telegram_ext_stub = types.ModuleType("telegram.ext")
+    telegram_ext_stub.Application = DummyApplication
     telegram_ext_stub.ApplicationBuilder = DummyBuilder
     telegram_ext_stub.MessageHandler = DummyMessageHandler
     telegram_ext_stub.filters = DummyFilters
