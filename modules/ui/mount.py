@@ -1,12 +1,17 @@
+from pathlib import Path
+
 from fastapi import APIRouter, Form, Request
-from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
-from coman.core.config import settings
-import json
+from fastapi.templating import Jinja2Templates
+
 import httpx
+import json
+
+from coman.core.config import settings
 
 
-templates = Jinja2Templates(directory="coman/modules/ui/templates")
+_TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
+templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
 
 def mount_ui(app):
