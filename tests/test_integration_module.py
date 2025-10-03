@@ -11,7 +11,8 @@ from coman.modules.integration.module import Module
 
 
 def _make_client(tmp_path, monkeypatch) -> TestClient:
-    monkeypatch.setattr(integration_module, "REG_PATH", str(tmp_path / "integrations.json"))
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(integration_module.settings, "data_dir", str(tmp_path), raising=False)
     allowed = [str(Path(__file__).resolve().parents[2])]
     monkeypatch.setattr(integration_module.settings, "allowed_integration_paths", allowed, raising=False)
     core = Core()

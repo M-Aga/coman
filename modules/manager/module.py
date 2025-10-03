@@ -1,4 +1,6 @@
 from __future__ import annotations
+from pathlib import Path
+
 from coman.core.base_module import BaseModule
 from coman.core.config import settings
 from coman.core.messages import (
@@ -10,21 +12,25 @@ from coman.core.messages import (
 from fastapi import Body, HTTPException, Query
 import os, json, httpx, re
 
-TOOLS_PATH = os.path.join("coman","data","tools.json")
+
+def _tools_path() -> Path:
+    return Path(settings.data_dir) / "tools.json"
 
 
 def load_tools() -> ToolRegistry:
-    if not os.path.exists(TOOLS_PATH):
+    path = _tools_path()
+    if not path.exists():
         return ToolRegistry()
     # utf-8-sig — на случай BOM в tools.json
-    with open(TOOLS_PATH, "r", encoding="utf-8-sig") as f:
+    with path.open("r", encoding="utf-8-sig") as f:
         data = json.load(f)
     return ToolRegistry.from_payload(data)
 
 
 def save_tools(registry: ToolRegistry) -> None:
-    os.makedirs(os.path.dirname(TOOLS_PATH), exist_ok=True)
-    with open(TOOLS_PATH, "w", encoding="utf-8") as f:
+    path = _tools_path()
+    os.makedirs(path.parent, exist_ok=True)
+    with path.open("w", encoding="utf-8") as f:
         json.dump(registry.to_payload(), f, ensure_ascii=False, indent=2)
 
 URL_RX = re.compile(r'(https?://[^\s\]\)\}\,;"]+)', re.I)

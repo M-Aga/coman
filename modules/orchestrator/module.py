@@ -1,22 +1,30 @@
 from __future__ import annotations
+from pathlib import Path
+
 from coman.core.base_module import BaseModule
 from coman.core.messages import Capability, CapabilityRegistry
 from fastapi import Body, HTTPException
 import os, json, importlib.util, glob
-CAP_PATH = os.path.join("coman","data","capabilities.json")
+from coman.core.config import settings
+
+
+def _cap_path() -> Path:
+    return Path(settings.data_dir) / "capabilities.json"
 
 
 def load_caps() -> CapabilityRegistry:
-    if not os.path.exists(CAP_PATH):
+    path = _cap_path()
+    if not path.exists():
         return CapabilityRegistry()
-    with open(CAP_PATH, "r", encoding="utf-8") as f:
+    with path.open("r", encoding="utf-8") as f:
         data = json.load(f)
     return CapabilityRegistry.from_payload(data)
 
 
 def save_caps(registry: CapabilityRegistry) -> None:
-    os.makedirs(os.path.dirname(CAP_PATH), exist_ok=True)
-    with open(CAP_PATH, "w", encoding="utf-8") as f:
+    path = _cap_path()
+    os.makedirs(path.parent, exist_ok=True)
+    with path.open("w", encoding="utf-8") as f:
         json.dump(registry.to_payload(), f, ensure_ascii=False, indent=2)
 class Module(BaseModule):
     name = "orchestrator"; description = "LLM router + capability registry + extensions loader"
