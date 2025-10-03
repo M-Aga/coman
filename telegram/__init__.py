@@ -11,8 +11,8 @@ from __future__ import annotations
 import importlib
 import sys
 from pathlib import Path
-from types import ModuleType
-from typing import List
+from types import ModuleType, SimpleNamespace
+from typing import Any, List, Sequence
 
 __all__: List[str] = ["coman"]
 
@@ -64,68 +64,71 @@ def _load_vendor() -> ModuleType:
     return module
 
 
-_vendor = _load_vendor()
-sys.modules.setdefault(f"{__name__}._vendor", _vendor)
-
-# Mirror exported attributes from the upstream package.
-for key, value in _vendor.__dict__.items():
-    if key in {"__name__", "__loader__", "__package__", "__spec__"}:
-        continue
-    if key == "__path__":
-        continue
-    if key not in globals():
-        globals()[key] = value
-
-if hasattr(_vendor, "__all__"):
-    __all__ = sorted(set(__all__) | set(getattr(_vendor, "__all__", [])))
-
-# Extend our search path so vendor submodules (telegram.ext, etc.) resolve.
-if hasattr(_vendor, "__path__"):
-    for entry in _vendor.__path__:
-        if entry not in __path__:
-            __path__.append(entry)
-
-if hasattr(_vendor, "__spec__") and _vendor.__spec__ is not None:
-    __spec__.submodule_search_locations = getattr(_vendor.__spec__, "submodule_search_locations", __path__)
-
-# Import Coman's service namespace so ``telegram.coman`` remains available.
-from . import coman  # noqa: E402  (import at end to avoid circular re-exports)
-
 root = sys.modules.setdefault("telegram", sys.modules[__name__])
-root.coman = coman
-=======
-"""Lightweight stubs of the telegram package for unit tests."""
 
-from __future__ import annotations
+try:
+    _vendor = _load_vendor()
+except ModuleNotFoundError:
+    sys.modules.setdefault(f"{__name__}._vendor", None)
 
-from types import SimpleNamespace
-from typing import Any, List, Sequence
+    __all__ = [
+        "InlineKeyboardButton",
+        "InlineKeyboardMarkup",
+        "Update",
+    ]
 
-__all__ = [
-    "InlineKeyboardButton",
-    "InlineKeyboardMarkup",
-    "Update",
-]
+    class InlineKeyboardButton:
+        def __init__(self, text: str, callback_data: str | None = None):
+            self.text = text
+            self.callback_data = callback_data
 
+    class InlineKeyboardMarkup:
+        def __init__(self, inline_keyboard: Sequence[Sequence[InlineKeyboardButton]]):
+            rows: List[List[InlineKeyboardButton]] = []
+            for row in inline_keyboard:
+                rows.append(list(row))
+            self.inline_keyboard = rows
 
-class InlineKeyboardButton:
-    def __init__(self, text: str, callback_data: str | None = None):
-        self.text = text
-        self.callback_data = callback_data
+    class Update:
+        def __init__(self, **kwargs: Any) -> None:  # pragma: no cover - not used in tests
+            self.effective_user = kwargs.get(
+                "effective_user", SimpleNamespace(id=0, username="")
+            )
+            self.effective_message = kwargs.get("effective_message")
+            self.effective_chat = kwargs.get("effective_chat")
+            self.callback_query = kwargs.get("callback_query")
+            self.message = kwargs.get("message")
 
+    from . import coman  # noqa: E402  (import at end to avoid circular re-exports)
 
-class InlineKeyboardMarkup:
-    def __init__(self, inline_keyboard: Sequence[Sequence[InlineKeyboardButton]]):
-        rows: List[List[InlineKeyboardButton]] = []
-        for row in inline_keyboard:
-            rows.append(list(row))
-        self.inline_keyboard = rows
+    root.coman = coman
+else:
+    sys.modules.setdefault(f"{__name__}._vendor", _vendor)
 
+    # Mirror exported attributes from the upstream package.
+    for key, value in _vendor.__dict__.items():
+        if key in {"__name__", "__loader__", "__package__", "__spec__"}:
+            continue
+        if key == "__path__":
+            continue
+        if key not in globals():
+            globals()[key] = value
 
-class Update:
-    def __init__(self, **kwargs: Any) -> None:  # pragma: no cover - not used in tests
-        self.effective_user = kwargs.get("effective_user", SimpleNamespace(id=0, username=""))
-        self.effective_message = kwargs.get("effective_message")
-        self.effective_chat = kwargs.get("effective_chat")
-        self.callback_query = kwargs.get("callback_query")
-        self.message = kwargs.get("message")
+    if hasattr(_vendor, "__all__"):
+        __all__ = sorted(set(__all__) | set(getattr(_vendor, "__all__", [])))
+
+    # Extend our search path so vendor submodules (telegram.ext, etc.) resolve.
+    if hasattr(_vendor, "__path__"):
+        for entry in _vendor.__path__:
+            if entry not in __path__:
+                __path__.append(entry)
+
+    if hasattr(_vendor, "__spec__") and _vendor.__spec__ is not None:
+        __spec__.submodule_search_locations = getattr(
+            _vendor.__spec__, "submodule_search_locations", __path__
+        )
+
+    # Import Coman's service namespace so ``telegram.coman`` remains available.
+    from . import coman  # noqa: E402  (import at end to avoid circular re-exports)
+
+    root.coman = coman
