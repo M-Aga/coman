@@ -3,7 +3,7 @@ import asyncio, json, threading, time
 import httpx
 from fastapi import Body
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import httpx, json
 
 from coman.core.base_module import BaseModule
