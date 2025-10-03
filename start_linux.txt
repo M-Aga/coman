@@ -1,0 +1,3 @@
+Coman on Linux/macOS:
+1. Ensure dependencies are installed: pip install -r modules/requirements.txt
+2. Launch services with the helper script: ./run_coman.sh dual

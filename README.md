@@ -40,15 +40,16 @@ run_coman.bat          # Windows helper that executes ``python -m coman.modules.
     ```
 3. **Run one of the available services:**
     ```bash
-    python -m coman.modules.main [api|telegram|all] [--host 0.0.0.0] [--port 8000] [--reload]
+    python -m coman.modules.main [api|telegram|all|dual] [--host 0.0.0.0] [--port 8000] [--reload]
     ```
     * ``api`` – start the FastAPI core with every registered module
     * ``telegram`` – launch the Telegram bot runner
-    * ``all`` – run the HTTP API and Telegram bot together (API runs in a background thread)
+    * ``all``/``dual`` – run the HTTP API and Telegram bot together (API runs in a background thread)
 
 Windows users can double click ``run_coman.bat`` (or execute it from PowerShell)
 to run the same command; the script automatically prefers a local ``.venv``
-interpreter when available.
+interpreter when available.  Linux/macOS users can use the matching
+``run_coman.sh`` helper which offers the same behaviour for POSIX shells.
 
 ## Running the test-suite
 
