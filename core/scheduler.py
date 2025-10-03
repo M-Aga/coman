@@ -27,6 +27,13 @@ class Scheduler:
         if self.scheduler is not None:
             self.scheduler.start()
 
+    def shutdown(self):
+        if self.scheduler is not None:
+            try:
+                self.scheduler.shutdown(wait=False)
+            except Exception:
+                log.debug("Failed to shutdown scheduler cleanly", exc_info=True)
+
     def add_cron(self, func, cron: str, name: str):
         if self.scheduler is None or CronTrigger is None:
             log.debug("Skipping cron job '%s' because scheduler is unavailable", name)
