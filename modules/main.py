@@ -8,13 +8,61 @@ import logging
 import sys
 import threading
 from contextlib import contextmanager
-from typing import Any, Dict, Iterator, List
+from importlib import import_module
+from typing import Any, Dict, Iterable, Iterator, List, Sequence, Set
 
 from coman.core.base_module import BaseModule
 from coman.core.registry import Core, load_modules
 
 
 log = logging.getLogger("coman.main")
+
+
+_BASE_DEPENDENCIES: Dict[str, str] = {
+    "httpx": "httpx",
+}
+
+_SERVICE_DEPENDENCIES: Dict[str, Dict[str, str]] = {
+    "api": {
+        "fastapi": "fastapi",
+        "pydantic": "pydantic",
+        "apscheduler": "apscheduler",
+    },
+    "telegram": {
+        "telegram": "python-telegram-bot",
+    },
+}
+
+
+def ensure_runtime_dependencies(services: Iterable[str]) -> None:
+    """Validate that the runtime dependencies for the requested services exist."""
+
+    missing: List[str] = []
+    seen: Set[str] = set()
+
+    def _check_modules(modules: Sequence[str]) -> None:
+        for module in modules:
+            try:
+                import_module(module)
+            except Exception:
+                package = dependency_map[module]
+                if package not in seen:
+                    missing.append(package)
+                    seen.add(package)
+
+    dependency_map: Dict[str, str] = dict(_BASE_DEPENDENCIES)
+    requested = set(services)
+    for service in requested:
+        dependency_map.update(_SERVICE_DEPENDENCIES.get(service, {}))
+
+    _check_modules(list(dependency_map))
+
+    if missing:
+        formatted = ", ".join(missing)
+        raise SystemExit(
+            "Missing dependencies detected: "
+            f"{formatted}. Install them with 'pip install -r modules/requirements.txt'."
+        )
 
 
 def _import_uvicorn():
@@ -199,7 +247,7 @@ def _build_parser() -> argparse.ArgumentParser:
     serve = subparsers.add_parser("serve", help="Run API, Telegram bot, or both")
     serve.add_argument(
         "service",
-        choices=("api", "telegram", "all"),
+        choices=("api", "telegram", "all", "dual"),
         default="api",
         nargs="?",
         help="Which service to run (default: api)",
@@ -230,7 +278,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def _parse_args(argv: List[str] | None = None) -> argparse.Namespace:
     argv = list(argv or sys.argv[1:])
-    if argv and argv[0] in {"api", "telegram", "all"}:
+    if argv and argv[0] in {"api", "telegram", "all", "dual"}:
         argv = ["serve", *argv]
     parser = _build_parser()
     if not argv:
@@ -247,6 +295,13 @@ def main(argv: List[str] | None = None) -> None:
     command = getattr(args, "command", "serve") or "serve"
     if command == "serve":
         service = getattr(args, "service", "api")
+        services: Set[str]
+        if service in {"all", "dual"}:
+            services = {"api", "telegram"}
+        else:
+            services = {service}
+        ensure_runtime_dependencies(services)
+
         if service == "api":
             run_api(args.host, args.port, args.reload)
         elif service == "telegram":
