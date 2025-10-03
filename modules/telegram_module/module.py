@@ -3,8 +3,7 @@ import asyncio, json, threading, time
 import httpx
 from fastapi import Body
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
-import httpx, json
+from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
 from coman.core.base_module import BaseModule
 from coman.core.config import settings
@@ -115,7 +114,7 @@ class Module(BaseModule):
             await update.message.reply_text(out)
 
         # строим приложение и запускаем polling
-        self.app = Application.builder().token(settings.telegram_bot_token).build()
+        self.app = ApplicationBuilder().token(settings.telegram_bot_token).build()
         self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
         self._loop.run_until_complete(self.app.initialize())
