@@ -1,4 +1,6 @@
 from __future__ import annotations
+from pathlib import Path
+
 from coman.core.base_module import BaseModule
 from coman.core.config import settings
 from coman.core.messages import (
@@ -9,20 +11,25 @@ from coman.core.messages import (
 )
 from fastapi import Body, HTTPException
 import sys, os, json, importlib, subprocess
-REG_PATH = os.path.join("coman","data","integrations.json")
+
+
+def _reg_path() -> Path:
+    return Path(settings.data_dir) / "integrations.json"
 
 
 def load_reg() -> IntegrationRegistry:
-    if not os.path.exists(REG_PATH):
+    path = _reg_path()
+    if not path.exists():
         return IntegrationRegistry()
-    with open(REG_PATH, "r", encoding="utf-8") as f:
+    with path.open("r", encoding="utf-8") as f:
         data = json.load(f)
     return IntegrationRegistry.from_payload(data)
 
 
 def save_reg(registry: IntegrationRegistry) -> None:
-    os.makedirs(os.path.dirname(REG_PATH), exist_ok=True)
-    with open(REG_PATH, "w", encoding="utf-8") as f:
+    path = _reg_path()
+    os.makedirs(path.parent, exist_ok=True)
+    with path.open("w", encoding="utf-8") as f:
         json.dump(registry.to_payload(), f, ensure_ascii=False, indent=2)
 def _is_allowed(path: str) -> bool:
     rp = os.path.realpath(path)

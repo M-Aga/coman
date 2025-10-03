@@ -1,15 +1,22 @@
 from __future__ import annotations
+from pathlib import Path
+
 from coman.core.base_module import BaseModule
 from fastapi import HTTPException
-import json, os, subprocess, shlex
-DATA_FILE = os.path.join("coman", "data", "vulnerabilities.json")
+import json, subprocess, shlex
+from coman.core.config import settings
+
+
+def _data_file() -> Path:
+    return Path(settings.data_dir) / "vulnerabilities.json"
 class Module(BaseModule):
     name = "defense_system"; description = "Security scans, nmap, report"
     def __init__(self, core):
         super().__init__(core)
         @self.router.get("/vuln/min-safe")
         def min_safe(package: str):
-            with open(DATA_FILE, "r", encoding="utf-8") as f: data = json.load(f)
+            path = _data_file()
+            with path.open("r", encoding="utf-8") as f: data = json.load(f)
             pkg = data.get("packages", {}).get(package)
             if not pkg: raise HTTPException(404, f"No data for {package}")
             return {"package": package, "min_safe_version": pkg["min_safe_version"]}
@@ -20,5 +27,6 @@ class Module(BaseModule):
             return {"stdout": res.stdout, "stderr": res.stderr, "code": res.returncode}
         @self.router.get("/report")
         def report():
-            with open(DATA_FILE, "r", encoding="utf-8") as f: data = json.load(f)
+            path = _data_file()
+            with path.open("r", encoding="utf-8") as f: data = json.load(f)
             return {"cves": data.get("cves", [])}
