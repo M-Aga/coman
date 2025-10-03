@@ -5,10 +5,14 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
+import subprocess
 import sys
 import threading
+import venv
 from contextlib import contextmanager
 from importlib import import_module
+from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Sequence, Set
 
 from coman.core.base_module import BaseModule
@@ -78,6 +82,48 @@ def _import_uvicorn():
 def _configure_logging(verbose: bool = False) -> None:
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(level=level, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+
+
+def _venv_python_path(venv_path: Path) -> Path:
+    scripts_dir = "Scripts" if os.name == "nt" else "bin"
+    python_name = "python.exe" if os.name == "nt" else "python"
+    return venv_path / scripts_dir / python_name
+
+
+def create_virtual_environment(
+    location: str | Path = Path(".venv"),
+    requirements: str | Path | None = Path("modules/requirements.txt"),
+    install_dependencies: bool = True,
+) -> Path:
+    """Create a virtual environment and optionally install dependencies."""
+
+    venv_path = Path(location)
+    if not venv_path.exists():
+        log.info("Creating virtual environment at %s", venv_path)
+        builder = venv.EnvBuilder(with_pip=True)
+        builder.create(str(venv_path))
+    else:
+        log.info("Virtual environment already exists at %s", venv_path)
+
+    python_path = _venv_python_path(venv_path)
+    if not python_path.exists():  # pragma: no cover - defensive guard
+        raise SystemExit(
+            f"Unable to locate the python executable inside the virtual environment at {python_path}"
+        )
+
+    if install_dependencies and requirements:
+        requirements_path = Path(requirements)
+        if requirements_path.exists():
+            log.info("Installing dependencies from %s", requirements_path)
+            subprocess.check_call(
+                [str(python_path), "-m", "pip", "install", "-r", str(requirements_path)]
+            )
+        else:
+            log.warning(
+                "Requirements file %s not found. Skipping dependency installation.", requirements_path
+            )
+
+    return python_path
 
 
 def _load_core() -> Core:
@@ -273,6 +319,20 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     call_cmd.add_argument("--verbose", action="store_true", help="Enable debug logging")
 
+    venv_cmd = subparsers.add_parser("venv", help="Create or update a virtual environment")
+    venv_cmd.add_argument("--path", default=".venv", help="Location for the virtual environment")
+    venv_cmd.add_argument(
+        "--requirements",
+        default="modules/requirements.txt",
+        help="Requirements file to install after creating the environment",
+    )
+    venv_cmd.add_argument(
+        "--no-install",
+        action="store_true",
+        help="Skip installing dependencies after ensuring the environment exists",
+    )
+    venv_cmd.add_argument("--verbose", action="store_true", help="Enable debug logging")
+
     return parser
 
 
@@ -316,6 +376,12 @@ def main(argv: List[str] | None = None) -> None:
 
     if command == "call":
         call_module(args.module, args.operation, args.payload, args.arg)
+        return
+
+    if command == "venv":
+        install_dependencies = not getattr(args, "no_install", False)
+        requirements = getattr(args, "requirements", None)
+        create_virtual_environment(args.path, requirements, install_dependencies)
         return
 
     raise SystemExit(f"Unknown command: {command}")
