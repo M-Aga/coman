@@ -69,3 +69,25 @@ def test_call_rejects_foreign_module(tmp_path, monkeypatch):
     )
     assert resp.status_code == 400
     assert "registered module" in resp.json()["detail"]
+
+
+def test_list_handles_utf8_bom(tmp_path, monkeypatch):
+    client = _make_client(tmp_path, monkeypatch)
+
+    reg_path = tmp_path / "integrations.json"
+    reg_path.write_text("\ufeff{\"integrations\": []}", encoding="utf-8")
+
+    resp = client.get("/integration/list")
+    assert resp.status_code == 200
+    assert resp.json() == {"integrations": []}
+
+
+def test_list_handles_blank_registry(tmp_path, monkeypatch):
+    client = _make_client(tmp_path, monkeypatch)
+
+    reg_path = tmp_path / "integrations.json"
+    reg_path.write_text("\ufeff   \n\n", encoding="utf-8")
+
+    resp = client.get("/integration/list")
+    assert resp.status_code == 200
+    assert resp.json() == {"integrations": []}
