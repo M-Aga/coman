@@ -21,8 +21,13 @@ def load_reg() -> IntegrationRegistry:
     path = _reg_path()
     if not path.exists():
         return IntegrationRegistry()
-    with path.open("r", encoding="utf-8") as f:
-        data = json.load(f)
+    with path.open("r", encoding="utf-8-sig") as f:
+        raw_text = f.read()
+
+    if not raw_text.strip():
+        return IntegrationRegistry()
+
+    data = json.loads(raw_text)
     return IntegrationRegistry.from_payload(data)
 
 
