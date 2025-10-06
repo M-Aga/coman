@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 
 def _split_paths(val: str):
@@ -14,11 +15,15 @@ def _split_paths(val: str):
     return norm
 
 
+_DEFAULT_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+
+
 class Settings:
     def __init__(self):
         self.env = os.getenv("COMAN_ENV", "dev")
         self.log_level = os.getenv("COMAN_LOG_LEVEL", "INFO")
-        self.data_dir = os.getenv("COMAN_DATA_DIR", "./coman/data")
+        default_data_dir = str(_DEFAULT_DATA_DIR)
+        self.data_dir = os.getenv("COMAN_DATA_DIR", default_data_dir)
         self.api_base = os.getenv("COMAN_API_BASE", "http://127.0.0.1:8000")
         self.allowed_integration_paths = _split_paths(os.getenv("COMAN_ALLOWED_INTEGRATION_PATHS", "./integrations,."))
         self.openai_api_key = os.getenv("OPENAI_API_KEY", "")
