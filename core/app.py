@@ -2,6 +2,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from observability import instrument_fastapi_app
+
 from .registry import Core
 from .scheduler import Scheduler
 from coman.modules.ui.mount import mount_ui
@@ -19,6 +21,7 @@ def build_fastapi_app(core: Core) -> FastAPI:
             core.scheduler.shutdown()
 
     app = FastAPI(title="Coman API", version="0.4.0", lifespan=lifespan)
+    instrument_fastapi_app(app, module_name="core", module_version="0.4.0")
 
     @app.get("/health")
     def health():

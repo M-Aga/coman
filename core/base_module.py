@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+from contextlib import nullcontext
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, List, Mapping
 
 from fastapi import APIRouter
+
+from observability import setup_module_observability
+from opentelemetry.trace import Tracer
 
 
 def _normalise_route_methods(route: Any) -> List[str]:
@@ -68,6 +72,8 @@ class ConsoleOperation:
     name: str
     route: Any
     endpoint: Callable[..., Any]
+    module_name: str
+    tracer: Tracer | None = None
 
     def describe(self) -> Dict[str, Any]:
         return {
@@ -94,10 +100,25 @@ class ConsoleOperation:
                 raise TypeError(f"Missing required argument '{name}' for operation '{self.name}'")
             value = _coerce_parameter_value(value, parameter.annotation)
             bound[name] = value
-        result = self.endpoint(**bound)
-        if inspect.iscoroutine(result):  # pragma: no cover - async endpoints
-            return asyncio.run(result)
-        return result
+        span_context = (
+            self.tracer.start_as_current_span(f"{self.module_name}.console.{self.name}")
+            if self.tracer is not None
+            else nullcontext(None)
+        )
+        route_path = _normalise_route_path(self.route)
+        methods = ",".join(_normalise_route_methods(self.route))
+        with span_context as span:
+            if span is not None:
+                span.set_attribute("coman.module", self.module_name)
+                span.set_attribute("coman.operation", self.name)
+                if route_path:
+                    span.set_attribute("coman.route", route_path)
+                if methods:
+                    span.set_attribute("coman.methods", methods)
+            result = self.endpoint(**bound)
+            if inspect.iscoroutine(result):  # pragma: no cover - async endpoints
+                return asyncio.run(result)
+            return result
 
 
 class BaseModule:
@@ -108,6 +129,11 @@ class BaseModule:
     def __init__(self, core: "Core"):
         self.core = core
         self.router = APIRouter(prefix=f"/{self.name}", tags=[self.name])
+        self._tracer = setup_module_observability(
+            self.name,
+            self.version,
+            router=self.router,
+        )
 
     def get_router(self):
         return self.router
@@ -150,7 +176,13 @@ class BaseModule:
                 continue
             base_name = getattr(endpoint, "__name__", None) or _normalise_route_path(route)
             base_name = base_name.strip("/") or self.name
-            op = ConsoleOperation(name=base_name, route=route, endpoint=endpoint)
+            op = ConsoleOperation(
+                name=base_name,
+                route=route,
+                endpoint=endpoint,
+                module_name=self.name,
+                tracer=getattr(self, "_tracer", None),
+            )
             for key in self._operation_keys(route):
                 key = key.strip()
                 if not key:
@@ -172,6 +204,8 @@ class BaseModule:
                 name=getattr(endpoint, "__name__", None) or _normalise_route_path(route).strip("/") or self.name,
                 route=route,
                 endpoint=endpoint,
+                module_name=self.name,
+                tracer=getattr(self, "_tracer", None),
             )
             desc = op.describe()
             key = (desc["path"], tuple(desc["methods"]))
