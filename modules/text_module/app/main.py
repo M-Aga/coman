@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -54,10 +54,30 @@ legacy_router = APIRouter(prefix="/text", tags=["text"], deprecated=True)
     deprecated=True,
     openapi_extra={"sunset": LEGACY_SUNSET.isoformat()},
 )
-async def legacy_uppercase(text: str) -> UppercaseResponse:
+async def legacy_uppercase(
+    text: str | None = Query(
+        default=None,
+        description="Arbitrary text that will be converted to uppercase.",
+        min_length=1,
+    ),
+    s: str | None = Query(
+        default=None,
+        alias="s",
+        description="Legacy query parameter name for backwards compatibility.",
+        deprecated=True,
+        min_length=1,
+    ),
+) -> UppercaseResponse:
     """Compatibility shim for the previous query parameter based endpoint."""
 
-    request = UppercaseRequest(text=text)
+    value = text if text is not None else s
+    if value is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Query parameter 'text' or legacy alias 's' is required.",
+        )
+
+    request = UppercaseRequest(text=value)
     return await uppercase(request)
 
 
