@@ -39,4 +39,4 @@ class ComanAPI:
         return self.post("/v1/process_text", {"text": text})
 
     def health(self) -> Dict[str, Any]:
-        return self.get("/health")
+        return self.get("/v1/health")

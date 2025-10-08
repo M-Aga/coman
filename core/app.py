@@ -3,6 +3,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from observability import instrument_fastapi_app
+from coman.version import (
+    API_MAJOR_VERSION,
+    COMAN_VERSION,
+    LEGACY_ROUTE_REMOVAL_DATE,
+)
 
 from .registry import Core
 from .scheduler import Scheduler
@@ -20,15 +25,26 @@ def build_fastapi_app(core: Core) -> FastAPI:
         finally:
             core.scheduler.shutdown()
 
-    app = FastAPI(title="Coman API", version="0.4.0", lifespan=lifespan)
-    instrument_fastapi_app(app, module_name="core", module_version="0.4.0")
+    app = FastAPI(title="Coman API", version=COMAN_VERSION, lifespan=lifespan)
+    instrument_fastapi_app(app, module_name="core", module_version=COMAN_VERSION)
 
-    @app.get("/health")
-    def health():
+    legacy_metadata = {"sunset": LEGACY_ROUTE_REMOVAL_DATE.isoformat()}
+
+    @app.get(f"/v{API_MAJOR_VERSION}/health")
+    def health() -> dict[str, object]:
         return {"status": "ok", "modules": list(core.modules.keys())}
 
+    @app.get("/health", deprecated=True, openapi_extra=legacy_metadata)
+    def legacy_health() -> dict[str, object]:
+        return health()
+
     for m in core.modules.values():
-        app.include_router(m.get_router())
+        routers = getattr(m, "get_routers", None)
+        if callable(routers):
+            for router in routers():
+                app.include_router(router)
+        else:  # pragma: no cover - compatibility fallback
+            app.include_router(m.get_router())
         try:
             m.register_schedules()
         except Exception:

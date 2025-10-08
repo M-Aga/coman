@@ -74,7 +74,7 @@ def test_console_operation_invokes_endpoint() -> None:
     operations = module.get_console_operations()
     op = operations["sample"]
     assert isinstance(op, ConsoleOperation)
-    assert op.describe()["path"] == "/base/sample"
+    assert op.describe()["path"] == "/v1/base/sample"
     assert op.invoke({"value": 3}) == 3
     assert module.describe_console_operations()[0]["methods"] == ["GET"]
 

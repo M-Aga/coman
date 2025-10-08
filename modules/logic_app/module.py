@@ -21,13 +21,13 @@ class Module(BaseModule):
         @self.router.post("/rulesx/add")
         def rulesx_add(name: str, expr_json: str, action_json: str, priority: int = 0, enabled: int = 1):
             with httpx.Client(timeout=10) as c:
-                r = c.post(f"{settings.api_base}/logic/rulesx/add",
+                r = c.post(f"{settings.api_base}/v1/logic/rulesx/add",
                            params={"name":name,"expr_json":expr_json,"action_json":action_json,"priority":priority,"enabled":enabled})
                 return r.json()
         @self.router.post("/decide-and-call-advanced")
         def decide_and_call_advanced(context: dict):
             with httpx.Client(timeout=10) as c:
-                rules = c.get(f"{settings.api_base}/logic/rulesx/list").json()
+                rules = c.get(f"{settings.api_base}/v1/logic/rulesx/list").json()
             applied = []
             for r in rules:
                 if not r["enabled"]: continue
@@ -41,5 +41,9 @@ class Module(BaseModule):
             integ = act.get("set",{}).get("use_integration"); call = act.get("set",{}).get("use_callable")
             if not (integ and call): raise HTTPException(400, "rule action missing use_integration/use_callable")
             with httpx.Client(timeout=15) as c:
-                r = c.post(f"{settings.api_base}/integration/call", params={"name": integ, "callable": call}, json={"kwargs": context})
+                r = c.post(
+                    f"{settings.api_base}/v1/integration/call",
+                    params={"name": integ, "callable": call},
+                    json={"kwargs": context},
+                )
                 return {"applied": applied, "chosen": chosen, "integration_result": r.json()}

@@ -18,13 +18,14 @@ def _make_client(tmp_path, monkeypatch) -> TestClient:
     core = Core()
     mod = Module(core)
     app = FastAPI()
-    app.include_router(mod.get_router())
+    for router in mod.get_routers():
+        app.include_router(router)
     return TestClient(app)
 
 
 def _register_sample(client: TestClient, base_path: Path) -> None:
     resp = client.post(
-        "/integration/register",
+        "/v1/integration/register",
         params={
             "name": "sample",
             "path": str(base_path),
@@ -41,7 +42,7 @@ def test_call_uses_registered_module(tmp_path, monkeypatch):
     _register_sample(client, base_path)
 
     resp = client.post(
-        "/integration/call",
+        "/v1/integration/call",
         params={"name": "sample"},
         json={"kwargs": {"value": 42}},
     )
@@ -49,7 +50,7 @@ def test_call_uses_registered_module(tmp_path, monkeypatch):
     assert resp.json()["result"] == {"received": {"value": 42}}
 
     resp = client.post(
-        "/integration/call",
+        "/v1/integration/call",
         params={"name": "sample", "callable": "run"},
         json={"kwargs": {"value": 99}},
     )
@@ -63,7 +64,7 @@ def test_call_rejects_foreign_module(tmp_path, monkeypatch):
     _register_sample(client, base_path)
 
     resp = client.post(
-        "/integration/call",
+        "/v1/integration/call",
         params={"name": "sample", "callable": "os.system"},
         json={"kwargs": {}},
     )
@@ -77,7 +78,7 @@ def test_list_handles_utf8_bom(tmp_path, monkeypatch):
     reg_path = tmp_path / "integrations.json"
     reg_path.write_text("\ufeff{\"integrations\": []}", encoding="utf-8")
 
-    resp = client.get("/integration/list")
+    resp = client.get("/v1/integration/list")
     assert resp.status_code == 200
     assert resp.json() == {"integrations": []}
 
@@ -88,6 +89,6 @@ def test_list_handles_blank_registry(tmp_path, monkeypatch):
     reg_path = tmp_path / "integrations.json"
     reg_path.write_text("\ufeff   \n\n", encoding="utf-8")
 
-    resp = client.get("/integration/list")
+    resp = client.get("/v1/integration/list")
     assert resp.status_code == 200
     assert resp.json() == {"integrations": []}

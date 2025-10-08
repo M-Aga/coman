@@ -1,7 +1,7 @@
 {
   "tools": [
-    {"name":"text.uppercase","method":"GET","path":"/text/uppercase","params":["s"],"desc":"Uppercase string"},
-    {"name":"webscraper.title","method":"GET","path":"/webscraper/title","params":["url"],"desc":"Fetch <title>"},
-    {"name":"resources.snapshot","method":"GET","path":"/resources/snapshot","params":[],"desc":"CPU/RAM snapshot"}
+    {"name":"text.uppercase","method":"GET","path":"/v1/text/uppercase","params":["s"],"desc":"Uppercase string"},
+    {"name":"webscraper.title","method":"GET","path":"/v1/webscraper/title","params":["url"],"desc":"Fetch <title>"},
+    {"name":"resources.snapshot","method":"GET","path":"/v1/resources/snapshot","params":[],"desc":"CPU/RAM snapshot"}
   ]
 }

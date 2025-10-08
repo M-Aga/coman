@@ -34,7 +34,7 @@
 ## Deprecated endpoint
 - **Method:** `GET`
 - **Path:** `/text/uppercase`
-- **Status:** Deprecated, sunset on 2025-03-31.
+- **Status:** Deprecated, sunset on 2025-09-30.
 - **Query parameters:**
   - `text` – the string to transform.
 - **Response body:** Same as the versioned endpoint.

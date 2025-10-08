@@ -48,7 +48,7 @@ async def frequency(payload: FrequencyRequest) -> FrequencyResponse:
     return FrequencyResponse(counts=dict(Counter(tokens)))
 
 
-LEGACY_SUNSET = date(2025, 3, 31)
+LEGACY_SUNSET = date(2025, 9, 30)
 legacy_router = APIRouter(prefix="/analysis", tags=["analysis"], deprecated=True)
 setup_module_observability(SERVICE_NAME, "1.0.0", router=legacy_router)
 

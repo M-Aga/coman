@@ -14,6 +14,20 @@ if exist .venv\Scripts\python.exe (
 
 set EXIT_CODE=0
 
+if exist requirements.txt (
+    where pip3 >nul 2>&1
+    if %ERRORLEVEL%==0 (
+        pip3 install -r requirements.txt
+    ) else (
+        "%PYTHON%" -m pip install -r requirements.txt
+    )
+    if errorlevel 1 (
+        echo [Coman] Failed to install dependencies from requirements.txt
+        set EXIT_CODE=1
+        goto cleanup
+    )
+)
+
 "%PYTHON%" -c "import importlib, sys;"^
     "missing = [];"^
     "for name in ['fastapi','pydantic','httpx','apscheduler']:"^

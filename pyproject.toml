@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "coman"
-version = "0.4.0"
+version = "1.0.0"
 description = "Modular assistant platform with a FastAPI core and pluggable automation modules."
 readme = "README.md"
 requires-python = ">=3.12"

@@ -14,4 +14,12 @@ elif command -v python >/dev/null 2>&1; then
   PYTHON="python"
 fi
 
+if [ -f "requirements.txt" ]; then
+  if command -v pip3 >/dev/null 2>&1; then
+    pip3 install -r requirements.txt
+  else
+    "$PYTHON" -m pip install -r requirements.txt
+  fi
+fi
+
 exec "$PYTHON" -m coman.modules.main "$@"
