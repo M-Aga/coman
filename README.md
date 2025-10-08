@@ -1,4 +1,4 @@
-# Coman Unified Platform
+# Coman Unified Platform ![Test coverage](docs/assets/coverage.svg)
 
 Coman is a modular assistant platform that bundles a FastAPI-powered core with a
 collection of pluggable automation modules (Telegram bot, orchestration logic,
@@ -53,6 +53,7 @@ make format     # Ruff formatting
 make lint       # Ruff lint checks
 make typecheck  # mypy static analysis
 make test       # pytest with coverage (fails below 85% for ``core``)
+make coverage   # pytest + badge generation at docs/assets/coverage.svg
 make run        # Launch the FastAPI application
 ```
 
@@ -62,7 +63,8 @@ fresh clone.
 ## Running the test-suite
 
 ```bash
-make test
+make test       # quick feedback
+make coverage   # refresh coverage badge
 ```
 
 ## Troubleshooting
