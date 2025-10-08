@@ -45,6 +45,35 @@ COMAN_TG_DEFAULT_LANG=ru
 The runner will reuse the FastAPI client utilities defined in the core package
 so the bot can query the HTTP API for integration data.
 
+## Example prompts and flows
+
+Once the bot is running you can message it directly in Telegram. The commands
+and inline buttons exposed by the handlers cover the following common flows:
+
+* **Show the main menu:** send `/start` to register the user, reset any pending
+  flows, and display the interactive menu with actions such as “Get data”,
+  “Send data”, “System status”, “About”, “Settings”, and optionally “Admin
+  Panel” for privileged users.
+* **Get the current status:** tap the “System status” button or send `/status`
+  to trigger the status handler. The bot fetches the latest health and info data
+  from the Coman API and returns a formatted summary.
+* **Submit text for processing:** choose “Send data” from the menu. The bot will
+  prompt you with “Type the text you want to send:” and wait for your next
+  message. Reply with the payload you want to forward to the Coman API; the bot
+  echoes either a success confirmation or the error returned by the service.
+* **Retrieve information:** pick “Get data” to ask the API for the structured
+  info payload and display it in chat using bullet points.
+* **Adjust language:** open “Settings” and select either “Русский” or
+  “English”. The preference is stored per user and subsequent prompts adopt the
+  chosen language.
+* **Reach the admin panel:** if the user ID matches the configured admin list or
+  a stored admin role, pressing “Admin Panel” shows the dedicated welcome text
+  and can be extended with privileged actions.
+
+These prompts mirror the logic implemented in
+`telegram/coman/modules/telegram_module/handlers.py`, so they stay in sync with
+the shipped bot behaviour.
+
 ## Docker usage
 
 ```bash

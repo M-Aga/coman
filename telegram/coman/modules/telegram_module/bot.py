@@ -3,15 +3,17 @@ from telegram.ext import (
     ApplicationBuilder, CommandHandler, CallbackQueryHandler,
     MessageHandler, filters
 )
-from .config import load_config
+from typing import Optional
+
+from .config import Config, load_config
 from .db import DB
 from .api import ComanAPI
 from .handlers import cmd_start, cmd_status, cb_menu, cb_settings, on_text
 
 log = logging.getLogger("coman.telegram")
 
-def build_application():
-    cfg = load_config()
+def build_application(cfg: Optional[Config] = None):
+    cfg = cfg or load_config()
     db = DB(cfg.db_path, cfg.default_lang)
     api = ComanAPI(cfg.api_base_url, cfg.api_token, cfg.request_timeout_s)
 

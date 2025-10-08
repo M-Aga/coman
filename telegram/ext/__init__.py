@@ -64,12 +64,24 @@ class ApplicationBuilder:
         return self._factory()
 
 
-class MessageHandler:
+class _BaseHandler:
     """Container that stores handler configuration for tests."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.args = args
         self.kwargs = kwargs
+
+
+class MessageHandler(_BaseHandler):
+    pass
+
+
+class CommandHandler(_BaseHandler):
+    pass
+
+
+class CallbackQueryHandler(_BaseHandler):
+    pass
 
 
 class _Filter:
@@ -91,6 +103,8 @@ filters = _FiltersModule()
 __all__ = [
     "Application",
     "ApplicationBuilder",
+    "CallbackQueryHandler",
+    "CommandHandler",
     "ContextTypes",
     "MessageHandler",
     "filters",

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import importlib
 import sys
 import types
@@ -7,55 +8,41 @@ import types
 import pytest
 
 
+class DummyUpdater:
+    def __init__(self):
+        self.started = False
+        self.stopped = False
+
+    def start_polling(self):  # pragma: no cover - trivial stub
+        self.started = True
+
+    def stop(self):  # pragma: no cover - trivial stub
+        self.stopped = True
+
+
 class DummyApplication:
     def __init__(self):
-        self.handlers = []
         self.initialized = False
         self.started = False
         self.stopped = False
         self.shutdown_called = False
-
-    def add_handler(self, handler):
-        self.handlers.append(handler)
+        self.updater = DummyUpdater()
 
     async def initialize(self):
         self.initialized = True
+        await asyncio.sleep(0)
 
     async def start(self):
         self.started = True
+        await asyncio.sleep(0)
 
     async def stop(self):
         self.stopped = True
+        await asyncio.sleep(0)
 
     async def shutdown(self):
         self.shutdown_called = True
-
-
-class DummyBuilder:
-    def __init__(self):
-        self.token_value = None
-
-    def token(self, token):
-        self.token_value = token
-        return self
-
-    def build(self):
-        return DummyApplication()
-
-
-class DummyMessageHandler:
-    def __init__(self, *args, **kwargs):
-        self.args = args
-        self.kwargs = kwargs
-
-
-class DummyFilters:
-    TEXT = 1
-    COMMAND = 2
-
-
-class DummyContextTypes:
-    DEFAULT_TYPE = object
+        await asyncio.sleep(0)
 
 
 @pytest.fixture
@@ -69,10 +56,11 @@ def telegram_module(monkeypatch):
 
     telegram_ext_stub = types.ModuleType("telegram.ext")
     telegram_ext_stub.Application = DummyApplication
-    telegram_ext_stub.ApplicationBuilder = DummyBuilder
-    telegram_ext_stub.MessageHandler = DummyMessageHandler
-    telegram_ext_stub.filters = DummyFilters
-    telegram_ext_stub.ContextTypes = DummyContextTypes
+    telegram_ext_stub.ApplicationBuilder = object
+    telegram_ext_stub.CommandHandler = object
+    telegram_ext_stub.CallbackQueryHandler = object
+    telegram_ext_stub.MessageHandler = object
+    telegram_ext_stub.filters = types.SimpleNamespace(TEXT=object(), COMMAND=object())
 
     monkeypatch.setitem(sys.modules, "telegram", telegram_stub)
     monkeypatch.setitem(sys.modules, "telegram.ext", telegram_ext_stub)
@@ -96,26 +84,15 @@ def _settings(monkeypatch, telegram_module):
 
 
 def test_runner_builds_application(monkeypatch, telegram_module):
-    builders: list[DummyBuilder] = []
-    apps: list[DummyApplication] = []
+    captured_cfg = {}
+    fake_app = DummyApplication()
 
-    def fake_builder():
-        builder = DummyBuilder()
-        builders.append(builder)
+    def fake_build_application(cfg):
+        captured_cfg["token"] = cfg.telegram_token
+        captured_cfg["api_base_url"] = cfg.api_base_url
+        return fake_app
 
-        original_build = builder.build
-
-        def build_and_track():
-            app = original_build()
-            apps.append(app)
-            return app
-
-        builder.build = build_and_track
-        return builder
-
-    monkeypatch.setattr(telegram_module, "ApplicationBuilder", fake_builder)
-    monkeypatch.setattr(telegram_module, "MessageHandler", DummyMessageHandler)
-    monkeypatch.setattr(telegram_module, "filters", DummyFilters)
+    monkeypatch.setattr(telegram_module, "build_application", fake_build_application)
 
     class DummyCore:
         pass
@@ -125,6 +102,10 @@ def test_runner_builds_application(monkeypatch, telegram_module):
 
     mod._runner()
 
-    assert apps, "Application was not constructed"
-    assert mod.app is apps[0]
-    assert builders[0].token_value == "dummy-token"
+    assert captured_cfg == {"token": "dummy-token", "api_base_url": "http://example"}
+    assert mod.app is fake_app
+    assert fake_app.initialized is True
+    assert fake_app.started is True
+    assert fake_app.stopped is True
+    assert fake_app.shutdown_called is True
+    assert fake_app.updater.started is True

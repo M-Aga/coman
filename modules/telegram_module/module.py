@@ -1,28 +1,16 @@
 from __future__ import annotations
-import asyncio, json, threading, time
-import httpx
+
+import asyncio
+import threading
+import time
+from typing import Any
+
 from fastapi import Body
-from telegram import Update
-from telegram.ext import Application, ApplicationBuilder, MessageHandler, filters, ContextTypes
-import httpx, json
-
-
 
 from coman.core.base_module import BaseModule
 from coman.core.config import settings
-
-
-def _normalize_result(res):
-    # если внутри строка с JSON — распарсим; если просто текст — вернём текст
-    if isinstance(res, str):
-        s = res.strip()
-        if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
-            s = s[1:-1]
-        try:
-            return json.loads(s)
-        except Exception:
-            return s
-    return res
+from telegram.coman.modules.telegram_module.bot import build_application
+from telegram.coman.modules.telegram_module.config import Config
 
 
 class Module(BaseModule):
@@ -31,7 +19,7 @@ class Module(BaseModule):
 
     def __init__(self, core):
         super().__init__(core)
-        self.app: Application | None = None
+        self.app: Any | None = None
         self._th: threading.Thread | None = None
         self._stop = threading.Event()
 
@@ -59,11 +47,11 @@ class Module(BaseModule):
         @self.router.post("/stop")
         def stop():
             self._stop.set()
-            try:
-                if self.app and getattr(self, "_loop", None):
+            if self.app and getattr(self, "_loop", None):
+                try:
                     self._loop.call_soon_threadsafe(lambda: asyncio.create_task(self.app.stop()))
-            except Exception:
-                pass
+                except Exception:  # pragma: no cover - defensive guard
+                    pass
             return {"stopped": True}
 
         @self.router.post("/token")
@@ -81,54 +69,31 @@ class Module(BaseModule):
         self._loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self._loop)
 
-        async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-            text = (update.message.text or "").strip()
+        cfg = Config(telegram_token=settings.telegram_bot_token, api_base_url=settings.api_base)
+        self.app = build_application(cfg)
 
-            # 1) формируем payload для /manager/run
-            try:
-                if text.startswith("{"):
-                    payload = json.loads(text)          # пользователь прислал JSON → шлём как body
-                else:
-                    payload = {"goal": text}            # обычный текст → goal
-            except Exception:
-                payload = {"goal": text}
+        async def _start() -> None:
+            await self.app.initialize()
+            await self.app.start()
+            updater = getattr(self.app, "updater", None)
+            if updater and hasattr(updater, "start_polling"):
+                result = updater.start_polling()
+                if asyncio.iscoroutine(result):  # pragma: no cover - depends on telegram version
+                    await result
 
-            # 2) вызываем менеджер
-            try:
-                async with httpx.AsyncClient(timeout=20) as c:
-                    r = await c.post(f"{settings.api_base}/manager/run", json=payload)
-                    try:
-                        data = r.json()
-                    except Exception:
-                        data = {"result": r.text}
-            except Exception as e:
-                await update.message.reply_text(f"error: {e}")
-                return
-
-            res = data.get("result", data)
-            res = _normalize_result(res)
-
-            # 3) красиво отвечаем
-            if isinstance(res, (dict, list)):
-                out = json.dumps(res, ensure_ascii=False, indent=2)
-            else:
-                out = str(res)
-
-            await update.message.reply_text(out)
-
-        # строим приложение и запускаем polling
-        self.app = ApplicationBuilder().token(settings.telegram_bot_token).build()
-        self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-
-        self._loop.run_until_complete(self.app.initialize())
-        self._loop.run_until_complete(self.app.start())
+        self._loop.run_until_complete(_start())
         try:
             while not self._stop.is_set():
                 time.sleep(0.2)
         finally:
-            self._loop.run_until_complete(self.app.stop())
-            self._loop.run_until_complete(self.app.shutdown())
+            async def _shutdown() -> None:
+                updater = getattr(self.app, "updater", None)
+                if updater and hasattr(updater, "stop"):
+                    result = updater.stop()
+                    if asyncio.iscoroutine(result):  # pragma: no cover - depends on telegram version
+                        await result
+                await self.app.stop()
+                await self.app.shutdown()
+
+            self._loop.run_until_complete(_shutdown())
             self._loop.close()
-
-
-
