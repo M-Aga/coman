@@ -9,6 +9,8 @@ from fastapi import APIRouter, FastAPI
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from observability import instrument_fastapi_app, setup_module_observability
+
 
 class FrequencyRequest(BaseModel):
     """Request payload for the /frequency endpoint."""
@@ -32,7 +34,10 @@ class FrequencyResponse(BaseModel):
     counts: dict[str, int]
 
 
+SERVICE_NAME = "analysis"
+
 router = APIRouter(prefix="/v1/analysis", tags=["analysis"])
+setup_module_observability(SERVICE_NAME, "1.0.0", router=router)
 
 
 @router.post("/frequency", response_model=FrequencyResponse, summary="Count token frequency")
@@ -45,6 +50,7 @@ async def frequency(payload: FrequencyRequest) -> FrequencyResponse:
 
 LEGACY_SUNSET = date(2025, 3, 31)
 legacy_router = APIRouter(prefix="/analysis", tags=["analysis"], deprecated=True)
+setup_module_observability(SERVICE_NAME, "1.0.0", router=legacy_router)
 
 
 @legacy_router.post(
@@ -68,6 +74,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+instrument_fastapi_app(app, module_name=SERVICE_NAME, module_version="1.0.0")
 app.include_router(router)
 app.include_router(legacy_router)
 

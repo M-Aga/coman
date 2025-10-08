@@ -8,6 +8,8 @@ from fastapi import APIRouter, FastAPI
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from observability import instrument_fastapi_app, setup_module_observability
+
 
 class UppercaseRequest(BaseModel):
     """Request payload for the uppercase transformation."""
@@ -32,7 +34,10 @@ class UppercaseResponse(BaseModel):
     uppercased: str
 
 
+SERVICE_NAME = "text"
+
 router = APIRouter(prefix="/v1/text", tags=["text"])
+setup_module_observability(SERVICE_NAME, "1.0.0", router=router)
 
 
 @router.post("/uppercase", response_model=UppercaseResponse, summary="Uppercase a string")
@@ -45,6 +50,7 @@ async def uppercase(payload: UppercaseRequest) -> UppercaseResponse:
 
 LEGACY_SUNSET = date(2025, 3, 31)
 legacy_router = APIRouter(prefix="/text", tags=["text"], deprecated=True)
+setup_module_observability(SERVICE_NAME, "1.0.0", router=legacy_router)
 
 
 @legacy_router.get(
@@ -68,6 +74,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+instrument_fastapi_app(app, module_name=SERVICE_NAME, module_version="1.0.0")
 app.include_router(router)
 app.include_router(legacy_router)
 
