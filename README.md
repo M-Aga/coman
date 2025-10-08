@@ -18,29 +18,22 @@ run_coman.bat          # Windows helper that executes ``python -m coman.modules.
 
 ## Requirements
 
-* Python 3.10+ (the automation modules currently target 3.10/3.11/3.12)
-* ``pip`` / ``venv`` for managing environments
+* Python 3.12+
+* [`uv`](https://docs.astral.sh/uv/latest/) for managing environments and running tasks
 * Optional: ``uvicorn`` for serving the HTTP API (installed automatically when
   running the API service with the CLI instructions below)
 
 ## Quick start
 
-1. **Create a virtual environment (recommended):**
+1. **Install dependencies:**
     ```bash
-    python -m venv .venv
-    source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
+    uv sync
     ```
-2. **Install dependencies:** the ``modules/requirements.txt`` file now bundles
-   the core runtime packages (FastAPI, Pydantic, APScheduler, httpx, and the
-   Telegram bot SDK) so a single install step prepares both the API and bot
-   runners.
-
+    ``uv`` reads ``pyproject.toml`` and ``uv.lock`` to install both the runtime
+    and development tooling in a local ``.venv`` automatically.
+2. **Run one of the available services:**
     ```bash
-    pip install -r modules/requirements.txt uvicorn
-    ```
-3. **Run one of the available services:**
-    ```bash
-    python -m coman.modules.main [api|telegram|all|dual] [--host 0.0.0.0] [--port 8000] [--reload]
+    uv run python -m coman.modules.main [api|telegram|all|dual] [--host 0.0.0.0] [--port 8000] [--reload]
     ```
     * ``api`` – start the FastAPI core with every registered module
     * ``telegram`` – launch the Telegram bot runner
@@ -51,10 +44,25 @@ to run the same command; the script automatically prefers a local ``.venv``
 interpreter when available.  Linux/macOS users can use the matching
 ``run_coman.sh`` helper which offers the same behaviour for POSIX shells.
 
+## Development workflows
+
+The repository provides a ``Makefile`` that proxies common tasks through ``uv``:
+
+```bash
+make format     # Ruff formatting
+make lint       # Ruff lint checks
+make typecheck  # mypy static analysis
+make test       # pytest with coverage (fails below 85% for ``core``)
+make run        # Launch the FastAPI application
+```
+
+``make sync`` is available as a shortcut for ``uv sync`` when bootstrapping a
+fresh clone.
+
 ## Running the test-suite
 
 ```bash
-pytest
+make test
 ```
 
 ## Troubleshooting
@@ -65,12 +73,11 @@ pytest
   directories so importing ``coman.*`` works without additional monkey-patching.
 
 * ``ModuleNotFoundError`` for ``fastapi``, ``pydantic``, ``apscheduler`` or
-  ``telegram`` – install the runtime dependencies with
-  ``pip install -r modules/requirements.txt``.  The repository exposes a
+  ``telegram`` – ensure ``uv sync`` has been executed.  The repository exposes a
   ``telegram`` shim that forwards imports to the upstream
   ``python-telegram-bot`` package while keeping ``telegram.coman`` available,
   so the real SDK must be present in the environment.
 
-* ``uvicorn`` import errors – install the web server with
-  ``pip install uvicorn`` or run the API service via the CLI which will raise a
-  helpful message if the dependency is missing.
+* ``uvicorn`` import errors – add the web server with ``uv add uvicorn`` or run
+  the API service via the CLI which will raise a helpful message if the
+  dependency is missing.
