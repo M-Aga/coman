@@ -18,8 +18,10 @@ def _build_app() -> tuple[FastAPI, TestClient]:
     app = FastAPI()
     manager = manager_module.Module(core)
     text = text_module.Module(core)
-    app.include_router(manager.get_router())
-    app.include_router(text.get_router())
+    for router in manager.get_routers():
+        app.include_router(router)
+    for router in text.get_routers():
+        app.include_router(router)
     client = TestClient(app)
     return app, client
 
@@ -61,7 +63,7 @@ def test_manager_run_executes_uppercase(monkeypatch):
 
     monkeypatch.setattr(manager_module, "httpx", type("_DummyHTTPX", (), {"Client": DummyHTTPXClient}))
 
-    response = client.post("/manager/run", json={"goal": "uppercase hello"})
+    response = client.post("/v1/manager/run", json={"goal": "uppercase hello"})
     payload = response.json()
 
     assert response.status_code == 200

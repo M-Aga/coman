@@ -1,0 +1,2 @@
+-r modules/requirements.txt
+-r telegram/requirements.txt

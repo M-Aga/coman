@@ -4,11 +4,17 @@ import asyncio
 import inspect
 from contextlib import nullcontext
 from dataclasses import dataclass
+from datetime import date
 from typing import Any, Callable, Dict, Iterable, List, Mapping
 
 from fastapi import APIRouter
 
 from observability import setup_module_observability
+from coman.version import (
+    API_MAJOR_VERSION,
+    LEGACY_ROUTE_REMOVAL_DATE,
+    get_module_version,
+)
 from opentelemetry.trace import Tracer
 
 
@@ -123,20 +129,149 @@ class ConsoleOperation:
 
 class BaseModule:
     name: str = "base"
-    version: str = "0.4.0"
+    version: str | None = None
     description: str = "Base module"
+    api_major_version: int = API_MAJOR_VERSION
+    enable_legacy_routes: bool = True
+    legacy_sunset: date | None = LEGACY_ROUTE_REMOVAL_DATE
 
     def __init__(self, core: "Core"):
         self.core = core
-        self.router = APIRouter(prefix=f"/{self.name}", tags=[self.name])
+        self.version = self.version or get_module_version(self.name)
+        self.router = APIRouter(
+            prefix=f"/v{self.api_major_version}/{self.name}",
+            tags=[self.name],
+        )
+        self._legacy_router: APIRouter | None = None
+        legacy_openapi_extra: Dict[str, Any] | None = None
+        if self.legacy_sunset is not None:
+            legacy_openapi_extra = {"sunset": self.legacy_sunset.isoformat()}
+        if self.enable_legacy_routes:
+            self._legacy_router = APIRouter(
+                prefix=f"/{self.name}",
+                tags=[self.name],
+                deprecated=True,
+            )
+            if legacy_openapi_extra is not None:
+                self._legacy_router.openapi_extra = dict(legacy_openapi_extra)
+        self._legacy_openapi_extra = legacy_openapi_extra
+        self._wrap_router_with_legacy_mirroring()
         self._tracer = setup_module_observability(
             self.name,
             self.version,
             router=self.router,
         )
+        if self._legacy_router is not None:
+            setup_module_observability(
+                self.name,
+                self.version,
+                router=self._legacy_router,
+            )
 
     def get_router(self):
         return self.router
+
+    @property
+    def legacy_router(self) -> APIRouter | None:
+        return self._legacy_router
+
+    def _wrap_router_with_legacy_mirroring(self) -> None:
+        original_add_api_route = self.router.add_api_route
+
+        def add_api_route(
+            path: str,
+            endpoint: Callable[..., Any],
+            *,
+            summary: str | None = None,
+            deprecated: bool | None = None,
+            openapi_extra: Dict[str, Any] | None = None,
+            include_in_schema: bool = True,
+            methods: Iterable[str] | None = None,
+            **kwargs: Any,
+        ):
+            extra_kwargs = dict(kwargs)
+            if "methods" in extra_kwargs and methods is None:
+                methods = extra_kwargs.pop("methods")
+            else:
+                extra_kwargs.pop("methods", None)
+            route = original_add_api_route(
+                path,
+                endpoint,
+                summary=summary,
+                deprecated=deprecated,
+                openapi_extra=openapi_extra,
+                include_in_schema=include_in_schema,
+                methods=methods,
+                **extra_kwargs,
+            )
+            self._mirror_route_to_legacy(
+                path=path,
+                endpoint=endpoint,
+                summary=summary,
+                deprecated=deprecated,
+                openapi_extra=openapi_extra,
+                include_in_schema=include_in_schema,
+                methods=methods,
+                route=route,
+                extra_kwargs=extra_kwargs,
+            )
+            return route
+
+        self.router.add_api_route = add_api_route  # type: ignore[assignment]
+
+    def _mirror_route_to_legacy(
+        self,
+        *,
+        path: str,
+        endpoint: Callable[..., Any],
+        summary: str | None,
+        deprecated: bool | None,
+        openapi_extra: Dict[str, Any] | None,
+        include_in_schema: bool,
+        methods: Iterable[str] | None,
+        route: Any,
+        extra_kwargs: Dict[str, Any],
+    ) -> None:
+        if not self.enable_legacy_routes or self._legacy_router is None:
+            return
+        legacy_methods = list(methods or [])
+        if not legacy_methods:
+            legacy_methods = sorted(route.methods or [])
+        if not legacy_methods:
+            legacy_methods = ["GET"]
+        legacy_kwargs: Dict[str, Any] = dict(extra_kwargs)
+        legacy_kwargs.pop("methods", None)
+        legacy_kwargs["include_in_schema"] = include_in_schema
+        legacy_kwargs["deprecated"] = True
+        if summary:
+            legacy_kwargs["summary"] = f"[Deprecated] {summary}"
+        if openapi_extra or self._legacy_openapi_extra:
+            merged_extra: Dict[str, Any] = {}
+            if openapi_extra:
+                merged_extra.update(openapi_extra)
+            if self._legacy_openapi_extra:
+                merged_extra.setdefault(
+                    "sunset",
+                    self._legacy_openapi_extra.get("sunset"),
+                )
+            legacy_kwargs["openapi_extra"] = merged_extra
+        elif self._legacy_openapi_extra:
+            legacy_kwargs["openapi_extra"] = dict(self._legacy_openapi_extra)
+        if deprecated:
+            # Preserve explicit deprecation metadata on the new route.
+            legacy_kwargs["deprecated"] = deprecated
+        self._legacy_router.add_api_route(
+            path,
+            endpoint,
+            methods=legacy_methods,
+            **legacy_kwargs,
+        )
+
+    def get_routers(self) -> List[APIRouter]:
+        routers = [self.router]
+        if self._legacy_router is not None:
+            routers.append(self._legacy_router)
+        return routers
 
     def register_schedules(self):
         pass

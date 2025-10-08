@@ -40,7 +40,7 @@ auto-instrumentation.
    uv run python -m modules.main api
    ```
 
-4. Exercise a module endpoint (e.g. `http://127.0.0.1:8000/text/uppercase`) to
+4. Exercise a module endpoint (e.g. `http://127.0.0.1:8000/v1/text/uppercase`) to
    generate traces.
 
 > **Tip:** When running unit tests or working without the collector, export

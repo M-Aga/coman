@@ -39,7 +39,7 @@ All validation errors use FastAPI's default error payload:
 ## Deprecated endpoint
 - **Method:** `POST`
 - **Path:** `/analysis/frequency`
-- **Status:** Deprecated, sunset on 2025-03-31.
+- **Status:** Deprecated, sunset on 2025-09-30.
 - **Request body:** Same as the versioned endpoint.
 - **Response body:** Same as the versioned endpoint.
 

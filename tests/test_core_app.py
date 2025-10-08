@@ -34,8 +34,12 @@ def test_build_fastapi_app_defers_scheduler_start(monkeypatch):
     assert isinstance(core.scheduler, DummyScheduler)
 
     with TestClient(application) as client:
-        response = client.get("/health")
+        response = client.get("/v1/health")
         assert response.status_code == 200
         assert response.json() == {"status": "ok", "modules": []}
+
+        legacy = client.get("/health")
+        assert legacy.status_code == 200
+        assert legacy.json() == response.json()
 
     assert calls == ["init", "start", "shutdown"]

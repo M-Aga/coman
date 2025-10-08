@@ -32,7 +32,7 @@ def mount_ui(app):
         result_json = None
         with httpx.Client(timeout=10) as c:
             try:
-                resp = c.post(f"{settings.api_base}/analysis/frequency", params={"text": text})
+                resp = c.post(f"{settings.api_base}/v1/analysis/frequency", params={"text": text})
                 resp.raise_for_status()
             except httpx.HTTPError as exc:
                 error = f"Request failed: {exc}"
@@ -51,14 +51,14 @@ def mount_ui(app):
     @router.get("/ui/tools", response_class=HTMLResponse)
     def tools_view(request: Request):
         with httpx.Client(timeout=10) as c:
-            tools = c.get(f"{settings.api_base}/manager/tools").json()
+            tools = c.get(f"{settings.api_base}/v1/manager/tools").json()
         return templates.TemplateResponse(request, "tools.html", {"tools": tools})
 
     @router.post("/ui/tools/register")
     def tools_register(request: Request, name: str, method: str, path: str, params: str = "", desc: str = ""):
         with httpx.Client(timeout=10) as c:
             c.post(
-                f"{settings.api_base}/manager/tools/register",
+                f"{settings.api_base}/v1/manager/tools/register",
                 params={"name": name, "method": method, "path": path, "params": params, "desc": desc},
             )
         return RedirectResponse(url="/ui/tools", status_code=303)
@@ -66,14 +66,14 @@ def mount_ui(app):
     @router.get("/ui/integrations", response_class=HTMLResponse)
     def integ_view(request: Request):
         with httpx.Client(timeout=10) as c:
-            lst = c.get(f"{settings.api_base}/integration/list").json()
+            lst = c.get(f"{settings.api_base}/v1/integration/list").json()
         return templates.TemplateResponse(request, "integrations.html", {"lst": lst})
 
     @router.post("/ui/integrations/register")
     def integ_register(request: Request, name: str, path: str, module: str, callable: str):
         with httpx.Client(timeout=10) as c:
             c.post(
-                f"{settings.api_base}/integration/register",
+                f"{settings.api_base}/v1/integration/register",
                 params={"name": name, "path": path, "module": module, "callable": callable},
             )
         return RedirectResponse(url="/ui/integrations", status_code=303)
@@ -85,7 +85,7 @@ def mount_ui(app):
         error = None
         with httpx.Client(timeout=10) as c:
             try:
-                resp = c.get(f"{settings.api_base}/telegram/status")
+                resp = c.get(f"{settings.api_base}/v1/telegram/status")
                 resp.raise_for_status()
                 try:
                     status = resp.json()
@@ -106,7 +106,7 @@ def mount_ui(app):
 
         with httpx.Client(timeout=10) as c:
             try:
-                resp = c.post(f"{settings.api_base}/telegram/token", json={"token": payload_token})
+                resp = c.post(f"{settings.api_base}/v1/telegram/token", json={"token": payload_token})
                 resp.raise_for_status()
                 message = "Token saved" if payload_token.strip() else "Token cleared"
                 try:
@@ -119,7 +119,7 @@ def mount_ui(app):
 
             if not status:
                 try:
-                    status_resp = c.get(f"{settings.api_base}/telegram/status")
+                    status_resp = c.get(f"{settings.api_base}/v1/telegram/status")
                     status_resp.raise_for_status()
                     status = status_resp.json()
                 except httpx.HTTPError as exc:
@@ -136,14 +136,14 @@ def mount_ui(app):
     @router.get("/ui/rules", response_class=HTMLResponse)
     def rules_view(request: Request):
         with httpx.Client(timeout=10) as c:
-            rules = c.get(f"{settings.api_base}/logic/rulesx/list").json()
+            rules = c.get(f"{settings.api_base}/v1/logic/rulesx/list").json()
         return templates.TemplateResponse(request, "rules.html", {"rules": rules})
 
     @router.post("/ui/rules/add")
     def rules_add(request: Request, name: str, expr_json: str, action_json: str, priority: int = 0):
         with httpx.Client(timeout=10) as c:
             c.post(
-                f"{settings.api_base}/logic/rulesx/add",
+                f"{settings.api_base}/v1/logic/rulesx/add",
                 params={
                     "name": name,
                     "expr_json": expr_json,

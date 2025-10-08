@@ -66,13 +66,13 @@ def test_manager_invokes_text_module_end_to_end(
         manager_module.ToolDefinition(
             name="text.uppercase",
             method="GET",
-            path="/text/uppercase",
+            path="/v1/text/uppercase",
             params=["s"],
         )
     )
     manager_module.save_tools(registry)
 
-    response = client.post("/manager/run", json={"goal": "uppercase this", "inputs": {}})
+    response = client.post("/v1/manager/run", json={"goal": "uppercase this", "inputs": {}})
     assert response.status_code == 200
     payload = response.json()
     assert payload["tool"] == "text.uppercase"
