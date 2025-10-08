@@ -1,0 +1,72 @@
+[build-system]
+requires = ["hatchling>=1.23"]
+build-backend = "hatchling.build"
+
+[project]
+name = "coman"
+version = "0.4.0"
+description = "Modular assistant platform with a FastAPI core and pluggable automation modules."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "apscheduler>=3.10.4",
+    "fastapi>=0.110.0,<0.116.0",
+    "httpx>=0.25.0,<1.0.0",
+    "jinja2>=3.1.2,<4.0.0",
+    "pydantic>=2.7.0,<3.0.0",
+    "python-dotenv>=1.0.0",
+    "python-telegram-bot>=21.0.0,<22.0.0",
+    "requests>=2.31.0",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "mypy>=1.10.0",
+    "pytest>=8.3.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.5.0",
+    "types-requests>=2.31.0.6",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "UP",
+    "B",
+    "SIM",
+    "A",
+    "ASYNC",
+    "COM",
+]
+ignore = ["B008"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+warn_redundant_casts = true
+disallow_any_generics = true
+no_implicit_optional = true
+warn_unused_ignores = true
+warn_return_any = true
+warn_unused_configs = true
+strict_equality = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra --showlocals --strict-markers --strict-config --cov=core --cov-report=term-missing --cov-fail-under=85"
+testpaths = [
+    "tests",
+]
+
